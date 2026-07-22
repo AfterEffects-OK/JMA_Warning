@@ -506,18 +506,7 @@
     </div>
 
     <script>
-        /**
-         * Weather Warning Application JavaScript
-         * - Fetches live weather warnings from JMA (Japan Meteorological Agency) API
-         * - Maps prefecture codes & municipality codes (class20s / class15s / class10s)
-         * - Supports real-time & simulation/demo modes
-         * - Provides audio alarm using Web Audio API
-         * - Provides OBS Studio Overlay logic (Ticker, Card pages, Badge single-item loop)
-         */
-
-        // Standard JMA Prefecture Offices Master
         const PREFECTURES = [
-            // 北海道
             { code: "016000", name: "北海道 (札幌)", region: "北海道", lat: 43.0642, lng: 141.3469 },
             { code: "011000", name: "北海道 (宗谷)", region: "北海道", lat: 45.4156, lng: 141.6733 },
             { code: "012000", name: "北海道 (網走・北見・紋別)", region: "北海道", lat: 44.0206, lng: 144.2733 },
@@ -525,14 +514,12 @@
             { code: "014000", name: "北海道 (胆振・日高)", region: "北海道", lat: 42.3152, lng: 140.9738 },
             { code: "015000", name: "北海道 (渡島・檜山)", region: "北海道", lat: 41.7687, lng: 140.7288 },
             { code: "017000", name: "北海道 (留萌・上川)", region: "北海道", lat: 43.7706, lng: 142.3650 },
-            // 東北
             { code: "020000", name: "青森県", region: "東北", lat: 40.8244, lng: 140.7400 },
             { code: "030000", name: "岩手県", region: "東北", lat: 39.7036, lng: 141.1527 },
             { code: "040000", name: "宮城県", region: "東北", lat: 38.2688, lng: 140.8719 },
             { code: "050000", name: "秋田県", region: "東北", lat: 39.7186, lng: 140.1024 },
             { code: "060000", name: "山形県", region: "東北", lat: 38.2404, lng: 140.3633 },
             { code: "070000", name: "福島県", region: "東北", lat: 37.7608, lng: 140.4748 },
-            // 関東甲信
             { code: "080000", name: "茨城県", region: "関東甲信", lat: 36.3418, lng: 140.4468 },
             { code: "090000", name: "栃木県", region: "関東甲信", lat: 36.5657, lng: 139.8836 },
             { code: "100000", name: "群馬県", region: "関東甲信", lat: 36.3907, lng: 139.0604 },
@@ -542,35 +529,29 @@
             { code: "140000", name: "神奈川県", region: "関東甲信", lat: 35.4478, lng: 139.6425 },
             { code: "190000", name: "山梨県", region: "関東甲信", lat: 35.6639, lng: 138.5683 },
             { code: "200000", name: "長野県", region: "関東甲信", lat: 36.6513, lng: 138.1812 },
-            // 北陸
             { code: "150000", name: "新潟県", region: "北陸", lat: 37.9022, lng: 139.0236 },
             { code: "160000", name: "富山県", region: "北陸", lat: 36.6953, lng: 137.2113 },
             { code: "170000", name: "石川県", region: "北陸", lat: 36.5944, lng: 136.6256 },
             { code: "180000", name: "福井県", region: "北陸", lat: 36.0652, lng: 136.2216 },
-            // 東海
             { code: "210000", name: "岐阜県", region: "東海", lat: 35.3912, lng: 136.7223 },
             { code: "220000", name: "静岡県", region: "東海", lat: 34.9769, lng: 138.3831 },
             { code: "230000", name: "愛知県", region: "東海", lat: 35.1802, lng: 136.9066 },
             { code: "240000", name: "三重県", region: "東海", lat: 34.7303, lng: 136.5086 },
-            // 近畿
             { code: "250000", name: "滋賀県", region: "近畿", lat: 35.0045, lng: 135.8686 },
             { code: "260000", name: "京都府", region: "近畿", lat: 35.0211, lng: 135.7556 },
             { code: "270000", name: "大阪府", region: "近畿", lat: 34.6937, lng: 135.5023 },
             { code: "280000", name: "兵庫県", region: "近畿", lat: 34.6913, lng: 135.1830 },
             { code: "290000", name: "奈良県", region: "近畿", lat: 34.6853, lng: 135.8327 },
             { code: "300000", name: "和歌山県", region: "近畿", lat: 34.2260, lng: 135.1675 },
-            // 中国
             { code: "310000", name: "鳥取県", region: "中国", lat: 35.5011, lng: 134.2351 },
             { code: "320000", name: "島根県", region: "中国", lat: 35.4723, lng: 133.0505 },
             { code: "330000", name: "岡山県", region: "中国", lat: 34.6618, lng: 133.9344 },
             { code: "340000", name: "広島県", region: "中国", lat: 34.3963, lng: 132.4594 },
             { code: "350000", name: "山口県", region: "中国", lat: 34.1858, lng: 131.4714 },
-            // 四国
             { code: "360000", name: "徳島県", region: "四国", lat: 34.0657, lng: 134.5593 },
             { code: "370000", name: "香川県", region: "四国", lat: 34.3401, lng: 134.0433 },
             { code: "380000", name: "愛媛県", region: "四国", lat: 33.8416, lng: 132.7657 },
             { code: "390000", name: "高知県", region: "四国", lat: 33.5597, lng: 133.5311 },
-            // 九州・沖縄
             { code: "400000", name: "福岡県", region: "九州・沖縄", lat: 33.6064, lng: 130.4183 },
             { code: "410000", name: "佐賀県", region: "九州・沖縄", lat: 33.2494, lng: 130.2988 },
             { code: "420000", name: "長崎県", region: "九州・沖縄", lat: 32.7503, lng: 129.8777 },
@@ -581,7 +562,6 @@
             { code: "471000", name: "沖縄県", region: "九州・沖縄", lat: 26.2124, lng: 127.6809 }
         ];
 
-        // JMA Warning Code Definitions Mapping
         const WARNING_CODES = {
             "02": { name: "暴風雪特別警報", level: "emergency", type: "snowstorm" },
             "03": { name: "大雨特別警報", level: "emergency", type: "rain" },
@@ -625,7 +605,6 @@
             "270010": "大阪市", "270020": "北摂", "270030": "東部", "270040": "南河内", "270050": "泉州"
         };
 
-        // Application State
         let currentPrefectureCode = "130000";
         let currentDataMode = "live";
         let masterAreaData = null;
@@ -639,8 +618,6 @@
 
         let isObsMode = false;
         let obsBadgeTimer = null;
-        let obsBadgeIndex = 0;
-        let obsCardPageIndex = 0;
         let obsConfig = {
             layout: 'ticker',
             position: 'top-left',
@@ -923,38 +900,45 @@
 
             let munis = [];
             if (rawData.areaTypes && rawData.areaTypes.length > 0) {
-                let muniAreaType = rawData.areaTypes.find(at => at.areaType === "class20" || (at.areas && at.areas.some(a => a.code && a.code.length === 7)));
-                if (!muniAreaType) {
-                    muniAreaType = rawData.areaTypes.find(at => at.areaType === "class15") || rawData.areaTypes.find(at => at.areaType === "class10") || rawData.areaTypes[0];
-                }
-                
-                if (muniAreaType && muniAreaType.areas) {
-                    muniAreaType.areas.forEach(area => {
-                        let name = area.name || getAreaNameFromMaster(area.code);
-                        const warnings = [];
-                        let maxSeverity = 'clear';
+                rawData.areaTypes.forEach(at => {
+                    if (at.areas && Array.isArray(at.areas)) {
+                        at.areas.forEach(area => {
+                            let name = area.name || getAreaNameFromMaster(area.code);
+                            const warnings = [];
+                            let maxSeverity = 'clear';
 
-                        if (area.warnings) {
-                            area.warnings.forEach(w => {
-                                if (w.status === "解除" || w.status === "発表警報・注意報はなし" || !w.code) return;
-                                const def = WARNING_CODES[w.code];
-                                if (def) {
-                                    warnings.push({
-                                        code: w.code,
-                                        name: def.name,
-                                        level: def.level,
-                                        type: def.type,
-                                        status: w.status || ''
-                                    });
-                                    if (def.level === 'heatstroke_special' || def.level === 'emergency') maxSeverity = 'emergency';
-                                    else if ((def.level === 'heatstroke' || def.level === 'warning') && maxSeverity !== 'emergency') maxSeverity = 'warning';
-                                    else if (def.level === 'advisory' && maxSeverity === 'clear') maxSeverity = 'advisory';
-                                }
-                            });
-                        }
-                        munis.push({ code: area.code, name: name, maxSeverity: maxSeverity, warnings: warnings });
-                    });
-                }
+                            if (area.warnings) {
+                                area.warnings.forEach(w => {
+                                    // 「解除」や「発表なし」以外のステータス（発表、継続など）をすべて対象にする
+                                    if (w.status === "解除" || w.status === "発表警報・注意報はなし" || !w.code) return;
+                                    const def = WARNING_CODES[w.code];
+                                    if (def) {
+                                        warnings.push({
+                                            code: w.code,
+                                            name: def.name,
+                                            level: def.level,
+                                            type: def.type,
+                                            status: w.status || ''
+                                        });
+
+                                        // 深刻度（maxSeverity）の判定を注意報レベル（advisory）にも対応させる
+                                        if (def.level === 'heatstroke_special' || def.level === 'emergency') {
+                                            maxSeverity = 'emergency';
+                                        } else if ((def.level === 'heatstroke' || def.level === 'warning') && maxSeverity !== 'emergency') {
+                                            maxSeverity = 'warning';
+                                        } else if (def.level === 'advisory' && maxSeverity === 'clear') {
+                                            maxSeverity = 'advisory'; // ここで雷注意報などの注意報を拾う
+                                        }
+                                    }
+                                });
+                            }
+
+                            if (!munis.some(m => m.code === area.code)) {
+                                munis.push({ code: area.code, name: name, maxSeverity: maxSeverity, warnings: warnings });
+                            }
+                        });
+                    }
+                });
             }
 
             currentWarningData = { prefInfo: currentPref, publishingOffice, reportTime: reportDatetime, municipalities: munis };
@@ -1002,7 +986,6 @@
                     const sampleObj = Object.values(WARNING_CODES).find(w => w.name === typeName);
                     const level = sampleObj ? sampleObj.level : 'advisory';
                     
-                    // 【修正】注意報は黄色、特別警報は紫色のタグスタイルに設定
                     let badgeStyle = 'bg-yellow-950/60 border-yellow-500 text-yellow-300';
                     if (level === 'heatstroke_special' || level === 'emergency') {
                         badgeStyle = 'bg-purple-950/90 border-purple-500 text-purple-200 font-bold pulse-emergency';
@@ -1077,7 +1060,6 @@
                     statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-yellow-500 text-slate-950">注意報あり</span>';
                 }
 
-                // 【修正】市区町村カード内の各警報・注意報タグの色（注意報は黄色、特別警報は紫など）
                 let warningsHTML = m.warnings.length > 0 
                     ? '<div class="flex flex-wrap gap-1.5 mt-2">' + m.warnings.map(w => {
                         let tagStyle = 'bg-red-950/80 border-red-700 text-red-200';
@@ -1228,7 +1210,7 @@
                 ? `<span class="inline-flex items-center gap-2 text-emerald-400 font-bold">現在、警報・注意報は発表されていません</span>`
                 : activeMunis.map(m => `<span class="inline-flex items-center gap-2 mx-4"><span class="px-2 py-0.5 rounded text-xs bg-red-600 text-white">${m.name}</span></span>`).join('');
 
-            container.innerHTML = `<div class="w-full glass-panel border border-amber-500/40 p-3 text-sm flex items-center overflow-hidden"><div class="shrink-0 bg-amber-500 text-slate-950 font-bold px-3 py-1 rounded text-xs mr-3">気象情報</div><div class="relative w-full overflow-hidden flex items-center">${itemsHtml}</div></div>`;
+            container.innerHTML = `<div class="w-full glass-panel border border-amber-500/40 p-3 text-sm flex items-center overflow-hidden"><div class="shrink-0 bg-amber-500 text-slate-950 font-bold px-3 py-1 rounded text-xs mr-3">気象庁情報</div><div class="relative w-full overflow-hidden flex items-center">${itemsHtml}</div></div>`;
         }
     </script>
 </body>
