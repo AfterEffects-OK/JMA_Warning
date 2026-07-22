@@ -90,9 +90,6 @@
     <header class="sticky top-0 z-40 glass-panel border-b border-slate-800 shadow-lg">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-red-600 via-amber-500 to-yellow-400 flex items-center justify-center text-white shadow-lg shadow-red-900/30">
-                    <i class="fa-solid fa-cloud-bolt text-xl"></i>
-                </div>
                 <div>
                     <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
                         気象警報・注意報 <span class="text-xs px-2 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30 font-medium">リアルタイム</span>
@@ -131,11 +128,11 @@
                 <!-- Data Mode Selector (JMA Live / Demo) -->
                 <div class="relative">
                     <select id="dataModeSelect" onchange="handleModeChange(this.value)" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs sm:text-sm rounded-lg px-3 py-1.5 pr-8 focus:ring-2 focus:ring-amber-500 focus:outline-none cursor-pointer">
-                        <option value="live">🌐 リアルタイム (気象庁API)</option>
-                        <option value="demo_heatstroke">☀️ [デモ] 熱中症特別警戒・警戒アラート</option>
-                        <option value="demo_typhoon">🚨 [デモ] 大雨・暴風特別警報</option>
-                        <option value="demo_snow">❄️ [デモ] 大雪・暴風雪警報</option>
-                        <option value="demo_clear">☀️ [デモ] 警報発令なし</option>
+                        <option value="live">リアルタイム (気象庁API)</option>
+                        <option value="demo_heatstroke">[デモ] 熱中症特別警戒・警戒アラート</option>
+                        <option value="demo_typhoon">[デモ] 大雨・暴風特別警報</option>
+                        <option value="demo_snow">[デモ] 大雪・暴風雪警報</option>
+                        <option value="demo_clear">[デモ] 警報発令なし</option>
                     </select>
                 </div>
 
@@ -154,7 +151,6 @@
             <div class="flex items-start sm:items-center justify-between gap-4 flex-col sm:flex-row">
                 <div class="flex items-start gap-4">
                     <div id="criticalBannerIcon" class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0 text-white shadow-md">
-                        <i class="fa-solid fa-triangle-exclamation"></i>
                     </div>
                     <div>
                         <div class="flex items-center gap-2 flex-wrap">
@@ -179,7 +175,7 @@
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
                 <div>
                     <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                        <i class="fa-solid fa-map-location-dot text-amber-500"></i> 地域を選択
+                         地域を選択
                     </h2>
                     <p class="text-xs text-slate-400 mt-0.5">全国47都道府県から気象警報・注意報を確認したい地域を選んでください</p>
                 </div>
@@ -292,7 +288,7 @@
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
                         <div class="flex items-center gap-2">
                             <h3 class="text-base font-bold text-white flex items-center gap-2">
-                                <i class="fa-solid fa-city text-amber-500"></i> 市区町村別の発令状況
+                                 市区町村別の発令状況
                             </h3>
                             <span id="totalMunicipalitiesCount" class="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-300">0地域</span>
                         </div>
@@ -622,41 +618,25 @@
             "41": { name: "熱中症特別警戒アラート", level: "heatstroke_special", type: "heat" }
         };
 
-        // 主要なエリアコード（一次細分区域・地域等）のフォールバック名称マップ
         const COMMON_AREA_NAMES = {
-            "130010": "東京地方",
-            "130020": "伊豆諸島北部",
-            "130030": "伊豆諸島南部",
-            "130040": "小笠原諸島",
-            "016010": "石狩地方",
-            "016020": "空知地方",
-            "016030": "後志地方",
-            "140010": "横浜・川崎",
-            "140020": "湘南",
-            "140030": "相模原",
-            "140040": "足柄上",
-            "140050": "西湘",
-            "270010": "大阪市",
-            "270020": "北摂",
-            "270030": "東部",
-            "270040": "南河内",
-            "270050": "泉州"
+            "130010": "東京地方", "130020": "伊豆諸島北部", "130030": "伊豆諸島南部", "130040": "小笠原諸島",
+            "016010": "石狩地方", "016020": "空知地方", "016030": "後志地方",
+            "140010": "横浜・川崎", "140020": "湘南", "140030": "相模原", "140040": "足柄上", "140050": "西湘",
+            "270010": "大阪市", "270020": "北摂", "270030": "東部", "270040": "南河内", "270050": "泉州"
         };
 
         // Application State
-        let currentPrefectureCode = "130000"; // Default 東京都
+        let currentPrefectureCode = "130000";
         let currentDataMode = "live";
         let masterAreaData = null;
         let currentWarningData = null;
         let isAudioEnabled = false;
         let audioCtx = null;
 
-        // Auto Refresh State
-        let autoRefreshSeconds = 180; // Default 3 min
+        let autoRefreshSeconds = 180;
         let remainingSeconds = 180;
         let countdownTimerId = null;
 
-        // OBS Mode State
         let isObsMode = false;
         let obsBadgeTimer = null;
         let obsBadgeIndex = 0;
@@ -673,7 +653,6 @@
             initPrefectureSelectors();
             await loadAreaMaster();
 
-            // Parse URL Query parameters for OBS mode
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('obs') === '1' || urlParams.get('mode') === 'obs') {
                 isObsMode = true;
@@ -702,13 +681,11 @@
 
         function startAutoRefreshTimer() {
             if (countdownTimerId) clearInterval(countdownTimerId);
-
             countdownTimerId = setInterval(() => {
                 if (autoRefreshSeconds === 0) {
                     updateCountdownBadge('OFF');
                     return;
                 }
-
                 remainingSeconds--;
                 if (remainingSeconds <= 0) {
                     fetchWeatherData();
@@ -716,7 +693,6 @@
                 }
                 updateCountdownBadge();
             }, 1000);
-
             updateCountdownBadge();
         }
 
@@ -728,19 +704,16 @@
         function updateCountdownBadge(customText) {
             const badge = document.getElementById('countdownBadge');
             if (!badge) return;
-
             if (customText) {
                 badge.textContent = customText;
                 badge.className = 'px-1.5 py-0.5 rounded bg-slate-900 text-[11px] font-mono font-semibold text-slate-500 border border-slate-700';
                 return;
             }
-
             if (autoRefreshSeconds === 0) {
                 badge.textContent = 'OFF';
                 badge.className = 'px-1.5 py-0.5 rounded bg-slate-900 text-[11px] font-mono font-semibold text-slate-500 border border-slate-700';
                 return;
             }
-
             const m = Math.floor(remainingSeconds / 60).toString().padStart(2, '0');
             const s = (remainingSeconds % 60).toString().padStart(2, '0');
             badge.textContent = `${m}:${s}`;
@@ -751,7 +724,6 @@
             const selectEl = document.getElementById('prefectureSelect');
             const chipsEl = document.getElementById('prefectureChips');
             const groupBtnsEl = document.getElementById('regionGroupButtons');
-
             if (!selectEl || !chipsEl || !groupBtnsEl) return;
 
             selectEl.innerHTML = '';
@@ -759,7 +731,6 @@
             groupBtnsEl.innerHTML = '';
 
             const regions = [...new Set(PREFECTURES.map(p => p.region))];
-
             const allBtn = document.createElement('button');
             allBtn.className = 'px-3 py-1 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs transition shadow-sm';
             allBtn.innerText = 'すべて';
@@ -790,24 +761,18 @@
             chipsEl.innerHTML = '';
 
             if (targetBtn) {
-                const btns = document.querySelectorAll('#regionGroupButtons button');
-                btns.forEach(b => {
+                document.querySelectorAll('#regionGroupButtons button').forEach(b => {
                     b.className = 'px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition border border-slate-700';
                 });
                 targetBtn.className = 'px-3 py-1 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs transition shadow-sm';
             }
 
-            const filtered = regionFilter === 'all' 
-                ? PREFECTURES 
-                : PREFECTURES.filter(p => p.region === regionFilter);
-
+            const filtered = regionFilter === 'all' ? PREFECTURES : PREFECTURES.filter(p => p.region === regionFilter);
             filtered.forEach(p => {
                 const chip = document.createElement('button');
                 const isSelected = p.code === currentPrefectureCode;
                 chip.className = `px-3 py-1.5 rounded-xl text-xs font-medium transition flex items-center gap-1.5 ${
-                    isSelected 
-                        ? 'bg-amber-500 text-slate-950 font-bold shadow-md scale-105' 
-                        : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60'
+                    isSelected ? 'bg-amber-500 text-slate-950 font-bold shadow-md scale-105' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60'
                 }`;
                 chip.innerHTML = `<span>${p.name}</span>`;
                 chip.onclick = () => selectPrefecture(p.code);
@@ -823,18 +788,15 @@
             const activeRegionBtn = document.querySelector('#regionGroupButtons button.bg-amber-500');
             const currentFilter = activeRegionBtn ? activeRegionBtn.innerText : 'すべて';
             renderPrefectureChips(currentFilter === 'すべて' ? 'all' : currentFilter);
-
             fetchWeatherData();
         }
 
         async function loadAreaMaster() {
             try {
                 const res = await fetch('https://www.jma.go.jp/bosai/common/const/area.json');
-                if (res.ok) {
-                    masterAreaData = await res.json();
-                }
+                if (res.ok) masterAreaData = await res.json();
             } catch (err) {
-                console.warn('JMA area.json fetch failed, using fallback area resolution:', err);
+                console.warn('JMA area.json fetch failed:', err);
             }
         }
 
@@ -847,10 +809,7 @@
                 if (masterAreaData.offices && masterAreaData.offices[code]) return masterAreaData.offices[code].name;
                 if (masterAreaData.centers && masterAreaData.centers[code]) return masterAreaData.centers[code].name;
             }
-            if (COMMON_AREA_NAMES[code]) {
-                return COMMON_AREA_NAMES[code];
-            }
-            return `地域 (${code})`;
+            return COMMON_AREA_NAMES[code] || `地域 (${code})`;
         }
 
         function handleModeChange(val) {
@@ -861,7 +820,6 @@
         async function fetchWeatherData(isManualRefresh = false) {
             const refreshIcon = document.getElementById('refreshIcon');
             if (refreshIcon) refreshIcon.classList.add('fa-spin');
-
             resetCountdown();
 
             try {
@@ -878,6 +836,7 @@
             } catch (err) {
                 console.error('Fetch weather data error:', err);
                 if (currentDataMode === 'live') {
+                    console.warn('API取得に失敗したため、デモデータ(台風想定)を表示します。');
                     const demoData = generateDemoData('demo_typhoon', currentPrefectureCode);
                     parseAndRenderWarningData(demoData);
                 }
@@ -899,8 +858,7 @@
                         areas: [
                             { code: prefCode + "01", name: `${pref.name} 都心部`, warnings: [{ code: "41", status: "発表" }, { code: "28", status: "継続" }] },
                             { code: prefCode + "02", name: `${pref.name} 東部`, warnings: [{ code: "40", status: "発表" }] },
-                            { code: prefCode + "03", name: `${pref.name} 西部`, warnings: [{ code: "40", status: "発表" }] },
-                            { code: prefCode + "04", name: `${pref.name} 臨海部`, warnings: [{ code: "40", status: "発表" }, { code: "24", status: "継続" }] }
+                            { code: prefCode + "03", name: `${pref.name} 西部`, warnings: [{ code: "40", status: "発表" }] }
                         ]
                     }]
                 };
@@ -914,8 +872,7 @@
                         areaType: "class20",
                         areas: [
                             { code: prefCode + "01", name: `${pref.name} 中央区`, warnings: [] },
-                            { code: prefCode + "02", name: `${pref.name} 北区`, warnings: [] },
-                            { code: prefCode + "03", name: `${pref.name} 南区`, warnings: [] }
+                            { code: prefCode + "02", name: `${pref.name} 北区`, warnings: [] }
                         ]
                     }]
                 };
@@ -929,14 +886,12 @@
                         areaType: "class20",
                         areas: [
                             { code: prefCode + "01", name: `${pref.name} 北部市`, warnings: [{ code: "12", status: "発表" }, { code: "13", status: "発表" }] },
-                            { code: prefCode + "02", name: `${pref.name} 中央市`, warnings: [{ code: "22", status: "継続" }, { code: "23", status: "継続" }] },
                             { code: prefCode + "03", name: `${pref.name} 豪雪町`, warnings: [{ code: "07", status: "特別警報発表" }, { code: "13", status: "発表" }] }
                         ]
                     }]
                 };
             }
 
-            // Default: demo_typhoon
             return {
                 publishingOffice: `${pref.name}気象台`,
                 reportDatetime: now,
@@ -944,9 +899,7 @@
                     areaType: "class20",
                     areas: [
                         { code: prefCode + "01", name: `${pref.name} 港区`, warnings: [{ code: "03", status: "特別警報発表" }, { code: "14", status: "発表" }] },
-                        { code: prefCode + "02", name: `${pref.name} 湾岸市`, warnings: [{ code: "10", status: "発表" }, { code: "14", status: "発表" }, { code: "17", status: "発表" }] },
-                        { code: prefCode + "03", name: `${pref.name} 山手町`, warnings: [{ code: "10", status: "発表" }, { code: "21", status: "継続" }] },
-                        { code: prefCode + "04", name: `${pref.name} 西市`, warnings: [{ code: "20", status: "継続" }, { code: "24", status: "継続" }] }
+                        { code: prefCode + "02", name: `${pref.name} 湾岸市`, warnings: [{ code: "10", status: "発表" }, { code: "14", status: "発表" }, { code: "17", status: "発表" }] }
                     ]
                 }]
             };
@@ -969,7 +922,6 @@
             document.getElementById('selectedRegionTag').textContent = currentPref.region;
 
             let munis = [];
-
             if (rawData.areaTypes && rawData.areaTypes.length > 0) {
                 let muniAreaType = rawData.areaTypes.find(at => at.areaType === "class20" || (at.areas && at.areas.some(a => a.code && a.code.length === 7)));
                 if (!muniAreaType) {
@@ -978,18 +930,13 @@
                 
                 if (muniAreaType && muniAreaType.areas) {
                     muniAreaType.areas.forEach(area => {
-                        let name = area.name;
-                        if (!name) {
-                            name = getAreaNameFromMaster(area.code);
-                        }
-
+                        let name = area.name || getAreaNameFromMaster(area.code);
                         const warnings = [];
                         let maxSeverity = 'clear';
 
                         if (area.warnings) {
                             area.warnings.forEach(w => {
                                 if (w.status === "解除" || w.status === "発表警報・注意報はなし" || !w.code) return;
-                                
                                 const def = WARNING_CODES[w.code];
                                 if (def) {
                                     warnings.push({
@@ -999,31 +946,18 @@
                                         type: def.type,
                                         status: w.status || ''
                                     });
-
                                     if (def.level === 'heatstroke_special' || def.level === 'emergency') maxSeverity = 'emergency';
                                     else if ((def.level === 'heatstroke' || def.level === 'warning') && maxSeverity !== 'emergency') maxSeverity = 'warning';
                                     else if (def.level === 'advisory' && maxSeverity === 'clear') maxSeverity = 'advisory';
                                 }
                             });
                         }
-
-                        munis.push({
-                            code: area.code,
-                            name: name,
-                            maxSeverity: maxSeverity,
-                            warnings: warnings
-                        });
+                        munis.push({ code: area.code, name: name, maxSeverity: maxSeverity, warnings: warnings });
                     });
                 }
             }
 
-            currentWarningData = {
-                prefInfo: currentPref,
-                publishingOffice: publishingOffice,
-                reportTime: reportDatetime,
-                municipalities: munis
-            };
-
+            currentWarningData = { prefInfo: currentPref, publishingOffice, reportTime: reportDatetime, municipalities: munis };
             renderDashboardOverview();
             filterMunicipalities();
 
@@ -1034,24 +968,16 @@
 
         function renderDashboardOverview() {
             if (!currentWarningData) return;
-
             const muniList = currentWarningData.municipalities;
-
-            let countHeatstroke = 0;
-            let countEmergency = 0;
-            let countWarning = 0;
-            let countAdvisory = 0;
+            let countHeatstroke = 0, countEmergency = 0, countWarning = 0, countAdvisory = 0;
             const warningTypeCounts = {};
 
             muniList.forEach(m => {
                 let hasHeat = false;
                 m.warnings.forEach(w => {
                     warningTypeCounts[w.name] = (warningTypeCounts[w.name] || 0) + 1;
-                    if (w.level === 'heatstroke' || w.level === 'heatstroke_special') {
-                        hasHeat = true;
-                    }
+                    if (w.level === 'heatstroke' || w.level === 'heatstroke_special') hasHeat = true;
                 });
-
                 if (hasHeat) countHeatstroke++;
                 if (m.maxSeverity === 'emergency') countEmergency++;
                 else if (m.maxSeverity === 'warning') countWarning++;
@@ -1065,7 +991,6 @@
 
             const typeBadgesContainer = document.getElementById('warningTypeBadges');
             typeBadgesContainer.innerHTML = '';
-
             const typeKeys = Object.keys(warningTypeCounts);
             document.getElementById('activeTypesCount').textContent = `${typeKeys.length}種類`;
 
@@ -1076,12 +1001,18 @@
                     const count = warningTypeCounts[typeName];
                     const sampleObj = Object.values(WARNING_CODES).find(w => w.name === typeName);
                     const level = sampleObj ? sampleObj.level : 'advisory';
-
-                    let badgeStyle = 'bg-yellow-950/60 border-yellow-700/50 text-yellow-300';
-                    if (level === 'heatstroke_special') badgeStyle = 'bg-rose-950/90 border-rose-500 text-rose-200 font-bold pulse-emergency';
-                    else if (level === 'heatstroke') badgeStyle = 'bg-rose-950/70 border-rose-700 text-rose-300 font-bold';
-                    else if (level === 'emergency') badgeStyle = 'bg-purple-950/80 border-purple-600 text-purple-200 font-bold pulse-emergency';
-                    else if (level === 'warning') badgeStyle = 'bg-red-950/80 border-red-700/60 text-red-200 font-bold';
+                    
+                    // 【修正】注意報は黄色、特別警報は紫色のタグスタイルに設定
+                    let badgeStyle = 'bg-yellow-950/60 border-yellow-500 text-yellow-300';
+                    if (level === 'heatstroke_special' || level === 'emergency') {
+                        badgeStyle = 'bg-purple-950/90 border-purple-500 text-purple-200 font-bold pulse-emergency';
+                    } else if (level === 'heatstroke') {
+                        badgeStyle = 'bg-rose-950/70 border-rose-700 text-rose-300 font-bold';
+                    } else if (level === 'warning') {
+                        badgeStyle = 'bg-red-950/80 border-red-700/60 text-red-200 font-bold';
+                    } else if (level === 'advisory') {
+                        badgeStyle = 'bg-yellow-950/80 border-yellow-500 text-yellow-300 font-medium';
+                    }
 
                     const badge = document.createElement('span');
                     badge.className = `px-2.5 py-1 rounded-lg border text-xs flex items-center gap-1.5 ${badgeStyle}`;
@@ -1091,34 +1022,17 @@
             }
 
             const bannerEl = document.getElementById('criticalBanner');
-            const hasHeatstrokeAlert = countHeatstroke > 0;
-
-            if (hasHeatstrokeAlert || countEmergency > 0 || countWarning > 0) {
+            if (countHeatstroke > 0 || countEmergency > 0 || countWarning > 0) {
                 bannerEl.classList.remove('hidden');
-
-                if (hasHeatstrokeAlert && countEmergency === 0) {
-                    bannerEl.className = 'rounded-2xl p-4 sm:p-5 border shadow-2xl transition-all duration-300 bg-gradient-to-r from-rose-950 via-slate-900 to-orange-950 border-rose-500/60 text-white';
-                    document.getElementById('criticalBannerIcon').className = 'w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0 bg-rose-600 text-white shadow-lg';
-                    document.getElementById('criticalBadge').className = 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-500 text-white';
-                    document.getElementById('criticalBadge').textContent = '熱中症警戒アラート 発表中';
-                    document.getElementById('criticalTitle').textContent = `${currentWarningData.prefInfo.name} 内の ${countHeatstroke} 市区町村に【熱中症警戒アラート】が発表されています`;
-                    document.getElementById('criticalDesc').textContent = '極めて危険な暑さが予想されます。室内ではエアコンを適切に使用し、こまめな水分・塩分補給を行ってください。';
-                    triggerAudioAlarm('warning');
-                } else if (countEmergency > 0) {
+                if (countEmergency > 0) {
                     bannerEl.className = 'rounded-2xl p-4 sm:p-5 border shadow-2xl transition-all duration-300 bg-gradient-to-r from-purple-950 via-purple-900 to-red-950 border-purple-500/60 text-white pulse-emergency';
-                    document.getElementById('criticalBannerIcon').className = 'w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0 bg-purple-600 text-white shadow-lg';
-                    document.getElementById('criticalBadge').className = 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-purple-500 text-white';
-                    document.getElementById('criticalBadge').textContent = '特別警報 発令中 (警戒レベル5相当)';
+                    document.getElementById('criticalBadge').textContent = '特別警報 発令中';
                     document.getElementById('criticalTitle').textContent = `${currentWarningData.prefInfo.name} 内の ${countEmergency} 市区町村に【特別警報】が発表されています`;
-                    document.getElementById('criticalDesc').textContent = '命の危険が迫っています。直ちに周囲の安全を確保し、適切な避難行動を行ってください。';
                     triggerAudioAlarm('emergency');
                 } else {
                     bannerEl.className = 'rounded-2xl p-4 sm:p-5 border shadow-xl transition-all duration-300 bg-gradient-to-r from-red-950 via-slate-900 to-orange-950 border-red-600/50 text-white';
-                    document.getElementById('criticalBannerIcon').className = 'w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0 bg-red-600 text-white shadow-lg';
-                    document.getElementById('criticalBadge').className = 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-red-500 text-white';
-                    document.getElementById('criticalBadge').textContent = '気象警報 発表中';
-                    document.getElementById('criticalTitle').textContent = `${currentWarningData.prefInfo.name} 内の ${countWarning} 市区町村に気象警報が発表されています`;
-                    document.getElementById('criticalDesc').textContent = '土砂災害や河川の増水・浸水・暴風等に警戒してください。最新のハザードマップを確認してください。';
+                    document.getElementById('criticalBadge').textContent = '警報・アラート 発表中';
+                    document.getElementById('criticalTitle').textContent = `${currentWarningData.prefInfo.name} 内に気象警報または熱中症警戒アラートが発表されています`;
                     triggerAudioAlarm('warning');
                 }
                 document.getElementById('criticalTime').textContent = currentWarningData.reportTime;
@@ -1129,88 +1043,55 @@
 
         function filterMunicipalities() {
             if (!currentWarningData) return;
-
             const searchQuery = document.getElementById('muniSearchInput').value.trim().toLowerCase();
             const filterSeverity = document.getElementById('severityFilter').value;
             const container = document.getElementById('municipalitiesList');
             container.innerHTML = '';
 
             let list = currentWarningData.municipalities;
-
-            if (searchQuery) {
-                list = list.filter(m => m.name.toLowerCase().includes(searchQuery));
-            }
-
-            if (filterSeverity === 'alert') {
-                list = list.filter(m => m.maxSeverity === 'emergency' || m.maxSeverity === 'warning');
-            } else if (filterSeverity === 'any') {
-                list = list.filter(m => m.maxSeverity !== 'clear');
-            } else if (filterSeverity === 'clear') {
-                list = list.filter(m => m.maxSeverity === 'clear');
-            }
+            if (searchQuery) list = list.filter(m => m.name.toLowerCase().includes(searchQuery));
+            if (filterSeverity === 'alert') list = list.filter(m => m.maxSeverity === 'emergency' || m.maxSeverity === 'warning');
+            else if (filterSeverity === 'any') list = list.filter(m => m.maxSeverity !== 'clear');
+            else if (filterSeverity === 'clear') list = list.filter(m => m.maxSeverity === 'clear');
 
             document.getElementById('totalMunicipalitiesCount').textContent = `${list.length}地域`;
 
             if (list.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-10 bg-slate-900/50 rounded-xl border border-slate-800">
-                        <i class="fa-solid fa-circle-check text-3xl text-emerald-500 mb-2"></i>
-                        <p class="text-sm font-semibold text-slate-300">該当する市区町村はありません</p>
-                        <p class="text-xs text-slate-500 mt-1">検索条件を変更するか、他の地域を選択してください</p>
-                    </div>
-                `;
+                container.innerHTML = `<div class="text-center py-10 bg-slate-900/50 rounded-xl border border-slate-800"><p class="text-sm font-semibold text-slate-300">該当する市区町村はありません</p></div>`;
                 return;
             }
 
             list.forEach(m => {
                 const card = document.createElement('div');
-                
                 let borderStyle = 'border-slate-800 bg-slate-900/60';
-                let statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-950 text-emerald-400 border border-emerald-800/50"><i class="fa-solid fa-check"></i> 発表なし</span>';
-
-                const hasHeat = m.warnings.some(w => w.level === 'heatstroke' || w.level === 'heatstroke_special');
+                let statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-950 text-emerald-400 border border-emerald-800/50">発表なし</span>';
 
                 if (m.maxSeverity === 'emergency') {
-                    borderStyle = 'border-purple-600/70 bg-purple-950/40 shadow-lg shadow-purple-950/30';
-                    statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-600 text-white border border-purple-400 animate-pulse">特別警報</span>';
+                    borderStyle = 'border-purple-600/70 bg-purple-950/40 shadow-lg';
+                    statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-600 text-white animate-pulse">特別警報</span>';
                 } else if (m.maxSeverity === 'warning') {
                     borderStyle = 'border-red-700/60 bg-red-950/30';
                     statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-600 text-white">警報あり</span>';
                 } else if (m.maxSeverity === 'advisory') {
-                    borderStyle = 'border-yellow-700/50 bg-yellow-950/20';
-                    statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-yellow-600 text-slate-950">注意報あり</span>';
+                    borderStyle = 'border-yellow-600/60 bg-yellow-950/20';
+                    statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-yellow-500 text-slate-950">注意報あり</span>';
                 }
 
-                if (hasHeat && m.maxSeverity !== 'emergency') {
-                    borderStyle = 'border-rose-600/70 bg-rose-950/30 shadow-md shadow-rose-950/20';
-                }
+                // 【修正】市区町村カード内の各警報・注意報タグの色（注意報は黄色、特別警報は紫など）
+                let warningsHTML = m.warnings.length > 0 
+                    ? '<div class="flex flex-wrap gap-1.5 mt-2">' + m.warnings.map(w => {
+                        let tagStyle = 'bg-red-950/80 border-red-700 text-red-200';
+                        if (w.level === 'emergency' || w.level === 'heatstroke_special') {
+                            tagStyle = 'bg-purple-950/80 border-purple-500 text-purple-200 font-bold';
+                        } else if (w.level === 'advisory') {
+                            tagStyle = 'bg-yellow-950/80 border-yellow-500 text-yellow-300';
+                        }
+                        return `<span class="px-2 py-0.5 rounded border text-xs ${tagStyle}">${w.name}</span>`;
+                    }).join('') + '</div>'
+                    : '<p class="text-xs text-slate-500 mt-1">発表中の警報・注意報はありません</p>';
 
-                let warningsHTML = '';
-                if (m.warnings.length > 0) {
-                    warningsHTML = '<div class="flex flex-wrap gap-1.5 mt-2">';
-                    m.warnings.forEach(w => {
-                        let tagClass = 'bg-yellow-950/80 border-yellow-700/60 text-yellow-300';
-                        if (w.level === 'heatstroke_special') tagClass = 'bg-rose-900/90 border-rose-400 text-white font-bold animate-pulse';
-                        else if (w.level === 'heatstroke') tagClass = 'bg-rose-900/80 border-rose-600 text-rose-100 font-bold';
-                        else if (w.level === 'emergency') tagClass = 'bg-purple-900/90 border-purple-500 text-white font-bold';
-                        else if (w.level === 'warning') tagClass = 'bg-red-900/90 border-red-500 text-red-100 font-bold';
-
-                        const statusText = w.status ? `<span class="text-[9px] opacity-75">(${w.status})</span>` : '';
-                        warningsHTML += `<span class="px-2 py-0.5 rounded border text-xs flex items-center gap-1 ${tagClass}">${w.name} ${statusText}</span>`;
-                    });
-                    warningsHTML += '</div>';
-                } else {
-                    warningsHTML = `<p class="text-xs text-slate-500 mt-1">現在発表されている注意報・警報はありません</p>`;
-                }
-
-                card.className = `rounded-xl p-3.5 border ${borderStyle} transition hover:border-slate-600 space-y-1.5`;
-                card.innerHTML = `
-                    <div class="flex items-center justify-between">
-                        <span class="font-bold text-sm text-white">${m.name}</span>
-                        ${statusBadge}
-                    </div>
-                    ${warningsHTML}
-                `;
+                card.className = `rounded-xl p-3.5 border ${borderStyle} transition space-y-1.5`;
+                card.innerHTML = `<div class="flex items-center justify-between"><span class="font-bold text-sm text-white">${m.name}</span>${statusBadge}</div>${warningsHTML}`;
                 container.appendChild(card);
             });
         }
@@ -1219,13 +1100,12 @@
             isAudioEnabled = !isAudioEnabled;
             const btn = document.getElementById('soundToggleBtn');
             const icon = document.getElementById('soundIcon');
-            
             if (isAudioEnabled) {
-                btn.className = 'px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs sm:text-sm font-medium transition flex items-center gap-2 border border-amber-500 shadow';
+                btn.className = 'px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs sm:text-sm font-medium transition flex items-center gap-2 border border-amber-500 shadow';
                 icon.className = 'fa-solid fa-volume-high text-amber-200';
                 triggerAudioAlarm('warning');
             } else {
-                btn.className = 'px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs sm:text-sm font-medium transition flex items-center gap-2 border border-slate-700';
+                btn.className = 'px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 text-xs sm:text-sm font-medium transition flex items-center gap-2 border border-slate-700';
                 icon.className = 'fa-solid fa-volume-xmark text-slate-400';
             }
         }
@@ -1233,115 +1113,46 @@
         function triggerAudioAlarm(type) {
             if (!isAudioEnabled) return;
             try {
-                if (!audioCtx) {
-                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                }
-                
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 const now = audioCtx.currentTime;
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
-
                 osc.connect(gain);
                 gain.connect(audioCtx.destination);
-
-                if (type === 'emergency') {
-                    osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(880, now);
-                    osc.frequency.setValueAtTime(440, now + 0.2);
-                    osc.frequency.setValueAtTime(880, now + 0.4);
-                    gain.gain.setValueAtTime(0.2, now);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
-                    osc.start(now);
-                    osc.stop(now + 0.6);
-                } else {
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(587.33, now); // D5
-                    osc.frequency.setValueAtTime(880, now + 0.15); // A5
-                    gain.gain.setValueAtTime(0.15, now);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-                    osc.start(now);
-                    osc.stop(now + 0.4);
-                }
+                osc.type = type === 'emergency' ? 'sawtooth' : 'sine';
+                osc.frequency.setValueAtTime(880, now);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                osc.start(now);
+                osc.stop(now + 0.4);
             } catch (e) {
-                console.warn('Audio alarm playback error:', e);
-            }
-        }
-
-        function copyWarningReport() {
-            if (!currentWarningData) return;
-
-            const prefName = currentWarningData.prefInfo.name;
-            const timeStr = currentWarningData.reportTime;
-
-            let text = `【気象警報・注意報 発表状況】\n対象地域: ${prefName}\n発表時刻: ${timeStr}\n\n`;
-
-            const activeMunis = currentWarningData.municipalities.filter(m => m.maxSeverity !== 'clear');
-
-            if (activeMunis.length === 0) {
-                text += `現在、発表中の気象警報・注意報はありません。\n`;
-            } else {
-                activeMunis.forEach(m => {
-                    const wListStr = m.warnings.map(w => w.name).join('、');
-                    text += `・${m.name}: ${wListStr}\n`;
-                });
-            }
-
-            text += `\n出典: 気象庁防災情報 (リアルタイムモニターより出力)`;
-
-            const dummy = document.createElement('textarea');
-            dummy.value = text;
-            document.body.appendChild(dummy);
-            dummy.select();
-            document.execCommand('copy');
-            document.body.removeChild(dummy);
-
-            const notice = document.getElementById('copyNotice');
-            if (notice) {
-                notice.style.opacity = '1';
-                setTimeout(() => { notice.style.opacity = '0'; }, 2500);
+                console.warn('Audio error:', e);
             }
         }
 
         function scrollToMunicipalityList() {
-            const el = document.getElementById('municipalitySection');
-            if (el) el.scrollIntoView({ behavior: 'smooth' });
+            document.getElementById('municipalitySection')?.scrollIntoView({ behavior: 'smooth' });
         }
 
         function detectLocation() {
             if (!navigator.geolocation) {
-                alert('お使いのブラウザは位置情報サービスに対応していません。');
+                alert('位置情報に対応していません');
                 return;
             }
-
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    const lat = pos.coords.latitude;
-                    const lng = pos.coords.longitude;
-
-                    let closest = PREFECTURES[0];
-                    let minDistance = Infinity;
-
-                    PREFECTURES.forEach(p => {
-                        const dist = Math.hypot(p.lat - lat, p.lng - lng);
-                        if (dist < minDistance) {
-                            minDistance = dist;
-                            closest = p;
-                        }
-                    });
-
-                    selectPrefecture(closest.code);
-                },
-                (err) => {
-                    console.warn('Geolocation error:', err);
-                    selectPrefecture("130000"); // Fallback 東京都
-                }
-            );
+            navigator.geolocation.getCurrentPosition(pos => {
+                const lat = pos.coords.latitude, lng = pos.coords.longitude;
+                let closest = PREFECTURES[0], minDist = Infinity;
+                PREFECTURES.forEach(p => {
+                    const dist = Math.hypot(p.lat - lat, p.lng - lng);
+                    if (dist < minDist) { minDist = dist; closest = p; }
+                });
+                selectPrefecture(closest.code);
+            }, () => selectPrefecture("130000"));
         }
 
         function openObsModal() {
             const modal = document.getElementById('obsModal');
             if (!modal) return;
-            
             const prefSelect = document.getElementById('obsPrefSelect');
             if (prefSelect) {
                 prefSelect.innerHTML = '';
@@ -1352,387 +1163,72 @@
                     if (p.code === currentPrefectureCode) opt.selected = true;
                     prefSelect.appendChild(opt);
                 });
-                prefSelect.onchange = (e) => {
-                    obsConfig.pref = e.target.value;
-                    updateObsUrlPreview();
-                };
             }
-            
             modal.classList.remove('hidden');
             updateObsPositionOptions();
             updateObsUrlPreview();
         }
 
-        function closeObsModal() {
-            const modal = document.getElementById('obsModal');
-            if (modal) modal.classList.add('hidden');
-        }
-
-        function onObsLayoutChange() {
-            updateObsPositionOptions();
-            updateObsUrlPreview();
-        }
+        function closeObsModal() { document.getElementById('obsModal')?.classList.add('hidden'); }
+        function onObsLayoutChange() { updateObsPositionOptions(); updateObsUrlPreview(); }
 
         function updateObsPositionOptions() {
             const layout = document.querySelector('input[name="obsLayout"]:checked')?.value || 'ticker';
             const container = document.getElementById('obsPosOptions');
             if (!container) return;
-
-            const currentPos = document.querySelector('input[name="obsPos"]:checked')?.value;
-
             if (layout === 'ticker') {
                 container.className = 'grid grid-cols-3 gap-2.5';
-                const opts = [
-                    { value: 'top', label: '上部', barPos: 'top-0 left-0 right-0 h-2.5' },
-                    { value: 'center', label: '中央', barPos: 'top-1/2 -translate-y-1/2 left-0 right-0 h-2.5' },
-                    { value: 'bottom', label: '下部', barPos: 'bottom-0 left-0 right-0 h-2.5' }
-                ];
-                const selectedVal = ['top', 'center', 'bottom'].includes(currentPos) ? currentPos : 'bottom';
-
-                container.innerHTML = opts.map(o => `
-                    <label class="cursor-pointer border border-slate-700 bg-slate-900 rounded-xl p-2 text-center hover:border-indigo-500 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-950/50 flex flex-col items-center gap-1.5 group">
-                        <input type="radio" name="obsPos" value="${o.value}" ${o.value === selectedVal ? 'checked' : ''} class="hidden" onchange="updateObsUrlPreview()">
-                        <div class="w-full aspect-video rounded-lg border border-slate-700/80 bg-slate-950 relative overflow-hidden group-has-[:checked]:border-indigo-500 group-has-[:checked]:ring-1 group-has-[:checked]:ring-indigo-500/50">
-                            <div class="absolute ${o.barPos} bg-indigo-500 group-has-[:checked]:bg-indigo-400"></div>
-                        </div>
-                        <span class="font-bold block text-xs group-has-[:checked]:text-indigo-300">${o.label}</span>
-                    </label>
-                `).join('');
+                container.innerHTML = ['top', 'center', 'bottom'].map(v => `<label class="cursor-pointer border border-slate-700 bg-slate-900 rounded-xl p-2 text-center text-xs font-bold"><input type="radio" name="obsPos" value="${v}" ${v==='bottom'?'checked':''} class="hidden" onchange="updateObsUrlPreview()">${v.toUpperCase()}</label>`).join('');
             } else {
                 container.className = 'grid grid-cols-2 gap-2.5 max-w-sm mx-auto';
-                const opts = [
-                    { value: 'top-left', label: '左上', dotPos: 'top-1.5 left-1.5' },
-                    { value: 'top-right', label: '右上', dotPos: 'top-1.5 right-1.5' },
-                    { value: 'bottom-left', label: '左下', dotPos: 'bottom-1.5 left-1.5' },
-                    { value: 'bottom-right', label: '右下', dotPos: 'bottom-1.5 right-1.5' }
-                ];
-                const selectedVal = ['top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(currentPos) ? currentPos : 'top-left';
-
-                container.innerHTML = opts.map(o => `
-                    <label class="cursor-pointer border border-slate-700 bg-slate-900 rounded-xl p-2 text-center hover:border-indigo-500 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-950/50 flex flex-col items-center gap-1.5 group">
-                        <input type="radio" name="obsPos" value="${o.value}" ${o.value === selectedVal ? 'checked' : ''} class="hidden" onchange="updateObsUrlPreview()">
-                        <div class="w-full aspect-video rounded-lg border border-slate-700/80 bg-slate-950 relative overflow-hidden group-has-[:checked]:border-indigo-500 group-has-[:checked]:ring-1 group-has-[:checked]:ring-indigo-500/50">
-                            <div class="absolute ${o.dotPos} w-6 h-4 rounded bg-indigo-500 group-has-[:checked]:bg-indigo-400 shadow-sm"></div>
-                        </div>
-                        <span class="font-bold block text-xs group-has-[:checked]:text-indigo-300">${o.label}</span>
-                    </label>
-                `).join('');
+                container.innerHTML = ['top-left', 'top-right', 'bottom-left', 'bottom-right'].map(v => `<label class="cursor-pointer border border-slate-700 bg-slate-900 rounded-xl p-2 text-center text-xs font-bold"><input type="radio" name="obsPos" value="${v}" ${v==='top-left'?'checked':''} class="hidden" onchange="updateObsUrlPreview()">${v}</label>`).join('');
             }
         }
 
         function updateObsUrlPreview() {
-            const prefSelect = document.getElementById('obsPrefSelect');
-            const selectedPref = prefSelect ? prefSelect.value : currentPrefectureCode;
-            const selectedLayout = document.querySelector('input[name="obsLayout"]:checked')?.value || 'ticker';
-            const selectedPos = document.querySelector('input[name="obsPos"]:checked')?.value || (selectedLayout === 'ticker' ? 'bottom' : 'top-left');
+            const pref = document.getElementById('obsPrefSelect')?.value || currentPrefectureCode;
+            const layout = document.querySelector('input[name="obsLayout"]:checked')?.value || 'ticker';
+            const pos = document.querySelector('input[name="obsPos"]:checked')?.value || 'bottom';
             const transparent = document.getElementById('obsOptTransparent')?.checked ? '1' : '0';
             const autohide = document.getElementById('obsOptAutohide')?.checked ? '1' : '0';
-
-            obsConfig = {
-                layout: selectedLayout,
-                position: selectedPos,
-                transparent: transparent === '1',
-                autohide: autohide === '1',
-                pref: selectedPref
-            };
-
-            const baseUrl = window.location.href.split('?')[0];
-            const obsUrl = `${baseUrl}?obs=1&pref=${selectedPref}&layout=${selectedLayout}&pos=${selectedPos}&transparent=${transparent}&autohide=${autohide}`;
-            
             const urlInput = document.getElementById('obsGeneratedUrl');
-            if (urlInput) urlInput.value = obsUrl;
+            if (urlInput) urlInput.value = `${window.location.href.split('?')[0]}?obs=1&pref=${pref}&layout=${layout}&pos=${pos}&transparent=${transparent}&autohide=${autohide}`;
         }
 
         function copyObsUrl() {
             const urlInput = document.getElementById('obsGeneratedUrl');
             if (!urlInput) return;
-            
             urlInput.select();
             document.execCommand('copy');
-            
-            const notice = document.getElementById('obsCopyNotice');
-            if (notice) {
-                notice.classList.remove('opacity-0');
-                setTimeout(() => notice.classList.add('opacity-0'), 2500);
-            }
         }
 
         function enterObsModeFromModal() {
             closeObsModal();
-            if (obsConfig.pref && obsConfig.pref !== currentPrefectureCode) {
-                selectPrefecture(obsConfig.pref);
-            }
             isObsMode = true;
             applyObsModeStyles();
         }
 
-        function exitObsMode() {
-            isObsMode = false;
-            document.body.style.backgroundColor = '#0f172a';
-            
-            const header = document.querySelector('header');
-            const main = document.querySelector('main');
-            const footer = document.querySelector('footer');
-            const overlay = document.getElementById('obsOverlayContainer');
-
-            if (header) header.classList.remove('hidden');
-            if (main) main.classList.remove('hidden');
-            if (footer) footer.classList.remove('hidden');
-            if (overlay) {
-                overlay.classList.add('hidden');
-                overlay.classList.remove('flex');
-            }
-
-            if (obsBadgeTimer) {
-                clearInterval(obsBadgeTimer);
-                obsBadgeTimer = null;
-            }
-        }
-
         function applyObsModeStyles() {
-            const header = document.querySelector('header');
-            const main = document.querySelector('main');
-            const footer = document.querySelector('footer');
+            document.querySelector('header')?.classList.add('hidden');
+            document.querySelector('main')?.classList.add('hidden');
+            document.querySelector('footer')?.classList.add('hidden');
+            document.body.style.backgroundColor = obsConfig.transparent ? 'transparent' : '#0f172a';
             const overlay = document.getElementById('obsOverlayContainer');
-
-            if (header) header.classList.add('hidden');
-            if (main) main.classList.add('hidden');
-            if (footer) footer.classList.add('hidden');
-
-            if (obsConfig.transparent) {
-                document.body.style.backgroundColor = 'transparent';
-            } else {
-                document.body.style.backgroundColor = '#0f172a';
-            }
-
-            if (overlay) {
-                overlay.classList.remove('hidden');
-                overlay.classList.add('flex');
-            }
-
+            if (overlay) { overlay.classList.remove('hidden'); overlay.classList.add('flex'); }
             renderObsOverlay();
         }
 
         function renderObsOverlay() {
             const container = document.getElementById('obsOverlayContent');
             if (!container || !currentWarningData) return;
-
-            if (obsBadgeTimer) {
-                clearInterval(obsBadgeTimer);
-                obsBadgeTimer = null;
-            }
+            if (obsBadgeTimer) { clearInterval(obsBadgeTimer); obsBadgeTimer = null; }
 
             const activeMunis = currentWarningData.municipalities.filter(m => m.maxSeverity !== 'clear');
-            const prefName = currentWarningData.prefInfo ? currentWarningData.prefInfo.name : '対象地域';
+            let itemsHtml = activeMunis.length === 0 
+                ? `<span class="inline-flex items-center gap-2 text-emerald-400 font-bold">現在、警報・注意報は発表されていません</span>`
+                : activeMunis.map(m => `<span class="inline-flex items-center gap-2 mx-4"><span class="px-2 py-0.5 rounded text-xs bg-red-600 text-white">${m.name}</span></span>`).join('');
 
-            if (obsConfig.autohide && activeMunis.length === 0) {
-                container.innerHTML = '';
-                return;
-            }
-
-            let posAlignment = 'justify-end items-stretch';
-
-            if (obsConfig.layout === 'ticker') {
-                if (obsConfig.position === 'top') {
-                    posAlignment = 'justify-start items-stretch';
-                } else if (obsConfig.position === 'center') {
-                    posAlignment = 'justify-center items-stretch';
-                } else {
-                    posAlignment = 'justify-end items-stretch';
-                }
-            } else if (obsConfig.layout === 'card' || obsConfig.layout === 'badge') {
-                if (obsConfig.position === 'top-left') {
-                    posAlignment = 'justify-start items-start';
-                } else if (obsConfig.position === 'top-right') {
-                    posAlignment = 'justify-start items-end';
-                } else if (obsConfig.position === 'bottom-left') {
-                    posAlignment = 'justify-end items-start';
-                } else if (obsConfig.position === 'bottom-right') {
-                    posAlignment = 'justify-end items-end';
-                }
-            }
-            container.className = `pointer-events-auto w-full h-full flex flex-col ${posAlignment}`;
-
-            // --- Layout 1: Ticker ---
-            if (obsConfig.layout === 'ticker') {
-                let itemsHtml = '';
-                if (activeMunis.length === 0) {
-                    itemsHtml = `<span class="inline-flex items-center gap-2 text-emerald-400 font-bold">${prefName}: 現在、警報・注意報は発表されていません</span>`;
-                } else {
-                    activeMunis.forEach(m => {
-                        const wNames = m.warnings.map(w => w.name).join('・');
-                        let badgeClass = 'bg-yellow-500 text-slate-950';
-                        if (m.maxSeverity === 'emergency') badgeClass = 'bg-purple-600 text-white animate-pulse';
-                        else if (m.maxSeverity === 'warning') badgeClass = 'bg-red-600 text-white';
-
-                        itemsHtml += `<span class="inline-flex items-center gap-2 mx-4"><span class="px-2 py-0.5 rounded text-xs font-bold ${badgeClass}">${m.name}</span> <span class="text-white font-medium">${wNames}</span></span>`;
-                    });
-                }
-
-                const tickerContent = activeMunis.length > 0 
-                    ? `<div id="obsTickerTrack" class="animate-marquee flex items-center shrink-0"><div>${itemsHtml}</div><div>${itemsHtml}</div></div>`
-                    : `<div class="flex items-center">${itemsHtml}</div>`;
-
-                let borderClass = 'border-t';
-                if (obsConfig.position === 'top') borderClass = 'border-b';
-                else if (obsConfig.position === 'center') borderClass = 'border-y';
-
-                container.innerHTML = `
-                    <div class="w-full glass-panel ${borderClass} border-amber-500/40 p-3 shadow-2xl backdrop-blur-md text-sm flex items-center overflow-hidden">
-                        <div class="shrink-0 bg-amber-500 text-slate-950 font-black px-3 py-1 rounded-lg text-xs mr-3 flex items-center z-10 shadow-md">
-                            <span>気象情報</span>
-                        </div>
-                        <div class="relative w-full overflow-hidden flex items-center">
-                            ${tickerContent}
-                        </div>
-                    </div>
-                `;
-
-                if (activeMunis.length > 0) {
-                    requestAnimationFrame(() => {
-                        const track = document.getElementById('obsTickerTrack');
-                        if (track && track.firstElementChild) {
-                            const contentWidth = track.firstElementChild.scrollWidth;
-                            const speedPxPerSec = 70;
-                            const duration = Math.max(5, contentWidth / speedPxPerSec);
-                            track.style.animationDuration = `${duration}s`;
-                        }
-                    });
-                }
-            } 
-            // --- Layout 2: Card ---
-            else if (obsConfig.layout === 'card') {
-                const pageSize = 10;
-                const totalPages = Math.max(1, Math.ceil(activeMunis.length / pageSize));
-                
-                if (obsCardPageIndex >= totalPages) obsCardPageIndex = 0;
-
-                const renderCardPage = (pageIdx) => {
-                    let cardListHtml = '';
-                    if (activeMunis.length === 0) {
-                        cardListHtml = `<p class="text-xs text-emerald-400 py-1">警報・注意報なし</p>`;
-                    } else {
-                        const start = pageIdx * pageSize;
-                        const pageMunis = activeMunis.slice(start, start + pageSize);
-
-                        pageMunis.forEach(m => {
-                            const wNames = m.warnings.map(w => w.name).join(' ');
-                            let badgeClass = 'text-yellow-400';
-                            if (m.maxSeverity === 'emergency') badgeClass = 'text-purple-400 font-bold';
-                            else if (m.maxSeverity === 'warning') badgeClass = 'text-red-400 font-bold';
-
-                            cardListHtml += `
-                                <div class="flex items-start justify-between text-xs py-1 border-b border-slate-800/80 last:border-0">
-                                    <span class="font-bold text-slate-200 shrink-0 mr-2">${m.name}</span>
-                                    <span class="${badgeClass} text-right font-medium">${wNames}</span>
-                                </div>
-                            `;
-                        });
-                    }
-
-                    const pageIndicator = totalPages > 1 
-                        ? `<span class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-amber-400 border border-slate-700 font-bold">${pageIdx + 1} / ${totalPages}</span>`
-                        : `<span class="text-[10px] text-slate-400">${currentWarningData.reportTime || ''}</span>`;
-
-                    container.innerHTML = `
-                        <div id="obsCardWrapper" class="max-w-xs w-full glass-panel border border-slate-700/80 rounded-2xl p-4 shadow-2xl backdrop-blur-md space-y-2 transition-all duration-300 opacity-100">
-                            <div class="flex items-center justify-between border-b border-slate-700 pb-2">
-                                <span class="font-black text-sm text-amber-400">
-                                    ${prefName}
-                                </span>
-                                ${pageIndicator}
-                            </div>
-                            <div class="space-y-1 overflow-hidden">
-                                ${cardListHtml}
-                            </div>
-                        </div>
-                    `;
-                };
-
-                renderCardPage(obsCardPageIndex);
-
-                if (totalPages > 1) {
-                    obsBadgeTimer = setInterval(() => {
-                        const wrapper = document.getElementById('obsCardWrapper');
-                        if (wrapper) {
-                            wrapper.classList.add('opacity-0');
-                            setTimeout(() => {
-                                obsCardPageIndex = (obsCardPageIndex + 1) % totalPages;
-                                renderCardPage(obsCardPageIndex);
-                            }, 300);
-                        } else {
-                            obsCardPageIndex = (obsCardPageIndex + 1) % totalPages;
-                            renderCardPage(obsCardPageIndex);
-                        }
-                    }, 5000);
-                }
-            } 
-            // --- Layout 3: Mini-Badge ---
-            else if (obsConfig.layout === 'badge') {
-                const flatList = [];
-                activeMunis.forEach(m => {
-                    m.warnings.forEach(w => {
-                        flatList.push({
-                            muniName: m.name,
-                            warningName: w.name,
-                            level: w.level,
-                            maxSeverity: m.maxSeverity
-                        });
-                    });
-                });
-
-                const renderSingleBadge = (idx) => {
-                    if (flatList.length === 0) {
-                        container.innerHTML = `
-                            <div class="glass-panel border border-emerald-500/50 rounded-xl px-3.5 py-2 shadow-2xl backdrop-blur-md text-emerald-400 font-bold text-xs flex items-center gap-2">
-                                <span>[${prefName}] 警報・注意報なし</span>
-                            </div>
-                        `;
-                        return;
-                    }
-
-                    if (idx >= flatList.length) idx = 0;
-                    const item = flatList[idx];
-
-                    let badgeStyle = 'bg-yellow-500 text-slate-950 font-bold';
-                    let borderStyle = 'border-yellow-400/80';
-                    if (item.level === 'emergency') {
-                        badgeStyle = 'bg-purple-600 text-white font-extrabold animate-pulse';
-                        borderStyle = 'border-purple-300';
-                    } else if (item.level === 'warning') {
-                        badgeStyle = 'bg-red-600 text-white font-bold';
-                        borderStyle = 'border-red-400';
-                    }
-
-                    const counterText = flatList.length > 1 ? `<span class="ml-1 opacity-40 text-[8px] text-slate-400 font-mono tracking-tighter">(${idx + 1}/${flatList.length})</span>` : '';
-
-                    container.innerHTML = `
-                        <div id="obsBadgeElement" class="glass-panel border ${borderStyle} rounded-xl px-3.5 py-2 shadow-2xl backdrop-blur-md transition-all duration-300 opacity-100 flex items-center gap-2 text-xs">
-                            <span class="px-2 py-0.5 rounded text-[11px] ${badgeStyle}">${item.muniName}</span>
-                            <span class="text-white font-semibold">${item.warningName}</span>
-                            ${counterText}
-                        </div>
-                    `;
-                };
-
-                renderSingleBadge(obsBadgeIndex);
-
-                if (flatList.length > 1) {
-                    obsBadgeTimer = setInterval(() => {
-                        const badgeEl = document.getElementById('obsBadgeElement');
-                        if (badgeEl) {
-                            badgeEl.classList.add('opacity-0');
-                            setTimeout(() => {
-                                obsBadgeIndex = (obsBadgeIndex + 1) % flatList.length;
-                                renderSingleBadge(obsBadgeIndex);
-                            }, 300);
-                        } else {
-                            obsBadgeIndex = (obsBadgeIndex + 1) % flatList.length;
-                            renderSingleBadge(obsBadgeIndex);
-                        }
-                    }, 3500);
-                }
-            }
+            container.innerHTML = `<div class="w-full glass-panel border border-amber-500/40 p-3 text-sm flex items-center overflow-hidden"><div class="shrink-0 bg-amber-500 text-slate-950 font-bold px-3 py-1 rounded text-xs mr-3">気象情報</div><div class="relative w-full overflow-hidden flex items-center">${itemsHtml}</div></div>`;
         }
     </script>
 </body>
