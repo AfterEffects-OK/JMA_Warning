@@ -1,0 +1,1739 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>気象警報・注意報 リアルタイムモニター</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Noto Sans JP"', '"Inter"', 'sans-serif'],
+                    },
+                    colors: {
+                        emergency: '#dc2626', // 特別警報
+                        warning: '#ea580c',   // 警報
+                        advisory: '#ca8a04',  // 注意報
+                        normal: '#16a34a',    // 警報なし
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Noto Sans JP', 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .pulse-emergency {
+            animation: pulse-red 1.5s infinite;
+        }
+        @keyframes pulse-red {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.85; transform: scale(1.02); }
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        @keyframes marquee {
+            0% { transform: translateX(0%); }
+            100% { transform: translateX(-50%); }
+        }
+        .animate-marquee {
+            display: inline-flex;
+            white-space: nowrap;
+            animation: marquee 25s linear infinite;
+        }
+        .animate-marquee:hover {
+            animation-play-state: paused;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-red-500 selection:text-white">
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-40 glass-panel border-b border-slate-800 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-red-600 via-amber-500 to-yellow-400 flex items-center justify-center text-white shadow-lg shadow-red-900/30">
+                    <i class="fa-solid fa-cloud-bolt text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                        気象警報・注意報 <span class="text-xs px-2 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30 font-medium">リアルタイム</span>
+                    </h1>
+                    <p class="text-xs text-slate-400 hidden sm:block">気象庁データ連携 防災情報ダッシュボード</p>
+                </div>
+            </div>
+
+            <!-- Header Tools & Controls -->
+            <div class="flex items-center space-x-2 sm:space-x-3 flex-wrap justify-end gap-y-2">
+                <!-- OBS Overlay Mode Button -->
+                <button onclick="openObsModal()" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-semibold transition flex items-center gap-1.5 shadow-md active:scale-95" title="OBS配信用オーバーレイ表示設定">
+                    <i class="fa-solid fa-desktop text-amber-300"></i>
+                    <span>OBS表示</span>
+                </button>
+
+                <!-- Auto Refresh Selector & Countdown Badge -->
+                <div class="flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 shadow-sm">
+                    <i class="fa-regular fa-clock text-amber-400"></i>
+                    <span class="hidden sm:inline font-medium">自動更新:</span>
+                    <select id="autoRefreshSelect" onchange="handleAutoRefreshChange(this.value)" class="bg-transparent text-xs text-amber-300 font-medium focus:outline-none cursor-pointer">
+                        <option value="0" class="bg-slate-800 text-slate-200">OFF</option>
+                        <option value="60" class="bg-slate-800 text-slate-200">1分ごと</option>
+                        <option value="180" selected class="bg-slate-800 text-slate-200">3分ごと</option>
+                        <option value="300" class="bg-slate-800 text-slate-200">5分ごと</option>
+                    </select>
+                    <span id="countdownBadge" class="px-1.5 py-0.5 rounded bg-slate-900 text-[11px] font-mono font-semibold text-amber-400 border border-amber-500/30">03:00</span>
+                </div>
+
+                <!-- Audio Alert Toggle -->
+                <button id="soundToggleBtn" onclick="toggleAudio()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs sm:text-sm font-medium transition flex items-center gap-2 border border-slate-700">
+                    <i id="soundIcon" class="fa-solid fa-volume-xmark text-slate-400"></i>
+                    <span class="hidden md:inline">警報音通知</span>
+                </button>
+
+                <!-- Data Mode Selector (JMA Live / Demo) -->
+                <div class="relative">
+                    <select id="dataModeSelect" onchange="handleModeChange(this.value)" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs sm:text-sm rounded-lg px-3 py-1.5 pr-8 focus:ring-2 focus:ring-amber-500 focus:outline-none cursor-pointer">
+                        <option value="live">🌐 リアルタイム (気象庁API)</option>
+                        <option value="demo_heatstroke">☀️ [デモ] 熱中症特別警戒・警戒アラート</option>
+                        <option value="demo_typhoon">🚨 [デモ] 大雨・暴風特別警報</option>
+                        <option value="demo_snow">❄️ [デモ] 大雪・暴風雪警報</option>
+                        <option value="demo_clear">☀️ [デモ] 警報発令なし</option>
+                    </select>
+                </div>
+
+                <!-- Refresh Button -->
+                <button onclick="fetchWeatherData(true)" class="p-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white transition text-sm flex items-center justify-center shadow-md active:scale-95" title="手動更新">
+                    <i id="refreshIcon" class="fa-solid fa-arrows-rotate"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Top Critical Alert Status Banner -->
+        <div id="criticalBanner" class="hidden rounded-2xl p-4 sm:p-5 border shadow-xl transition-all duration-300">
+            <div class="flex items-start sm:items-center justify-between gap-4 flex-col sm:flex-row">
+                <div class="flex items-start gap-4">
+                    <div id="criticalBannerIcon" class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0 text-white shadow-md">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span id="criticalBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider"></span>
+                            <span id="criticalTime" class="text-xs text-slate-300"></span>
+                        </div>
+                        <h2 id="criticalTitle" class="text-lg sm:text-xl font-bold mt-1 text-white"></h2>
+                        <p id="criticalDesc" class="text-xs sm:text-sm text-slate-200 mt-0.5"></p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 self-end sm:self-center shrink-0">
+                    <button onclick="scrollToMunicipalityList()" class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs sm:text-sm font-semibold transition border border-white/20 flex items-center gap-2">
+                        <span>対象地域を確認</span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Region Selector & Search Section -->
+        <section class="glass-panel rounded-2xl p-4 sm:p-6 shadow-xl space-y-4">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                    <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-map-location-dot text-amber-500"></i> 地域を選択
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-0.5">全国47都道府県から気象警報・注意報を確認したい地域を選んでください</p>
+                </div>
+
+                <!-- GPS Location & Quick Filter Bar -->
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button onclick="detectLocation()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 hover:text-amber-300 text-xs sm:text-sm font-medium transition flex items-center gap-2 border border-slate-700 shadow-sm">
+                        <i class="fa-solid fa-location-crosshairs text-base"></i>
+                        <span>現在地から自動選択</span>
+                    </button>
+
+                    <!-- Prefecture Dropdown Selector -->
+                    <div class="relative min-w-[180px]">
+                        <select id="prefectureSelect" onchange="selectPrefecture(this.value)" class="w-full bg-slate-900 border border-amber-500/40 text-amber-200 font-medium text-xs sm:text-sm rounded-xl px-3 py-2 pr-8 focus:ring-2 focus:ring-amber-500 focus:outline-none cursor-pointer">
+                            <!-- Populated via JavaScript -->
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Region Category Buttons Grid -->
+            <div class="space-y-2">
+                <p class="text-xs font-semibold text-slate-400">地方区分からクイック選択:</p>
+                <div id="regionGroupButtons" class="flex flex-wrap gap-2">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Prefecture Chips Container -->
+            <div id="prefectureChips" class="flex flex-wrap gap-1.5 pt-2 border-t border-slate-800/80">
+                <!-- Prefectures injected here -->
+            </div>
+        </section>
+
+        <!-- Selected Prefecture Warning Overview Card -->
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Left Info Panel (Summary Counters & Warning Breakdown) -->
+            <div class="lg:col-span-1 glass-panel rounded-2xl p-5 shadow-xl flex flex-col justify-between space-y-6">
+                <div>
+                    <!-- Selected Region Header -->
+                    <div class="flex items-start justify-between border-b border-slate-800 pb-3">
+                        <div>
+                            <span id="selectedRegionTag" class="text-xs font-semibold text-amber-400 uppercase tracking-wider">---</span>
+                            <h2 id="selectedPrefectureTitle" class="text-2xl font-extrabold text-white mt-0.5">----</h2>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] text-slate-400">発表気象台</p>
+                            <p id="publishingOffice" class="text-xs font-medium text-slate-200">---</p>
+                            <p id="reportTime" class="text-[10px] text-slate-400 mt-1">更新: ---</p>
+                        </div>
+                    </div>
+
+                    <!-- Alert Counts Summary Cards Grid -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
+                        <!-- Heatstroke Count -->
+                        <div class="bg-rose-950/40 border border-rose-800/50 rounded-xl p-2.5 text-center">
+                            <p class="text-[10px] font-bold text-rose-400">熱中症警戒</p>
+                            <p id="countHeatstroke" class="text-xl sm:text-2xl font-black text-rose-400 mt-0.5">0</p>
+                            <p class="text-[9px] text-rose-300/70">市町村</p>
+                        </div>
+                        <!-- Emergency Count -->
+                        <div class="bg-red-950/40 border border-red-800/50 rounded-xl p-2.5 text-center">
+                            <p class="text-[10px] font-bold text-red-400">特別警報</p>
+                            <p id="countEmergency" class="text-xl sm:text-2xl font-black text-red-400 mt-0.5">0</p>
+                            <p class="text-[9px] text-red-300/70">市町村</p>
+                        </div>
+                        <!-- Warning Count -->
+                        <div class="bg-orange-950/40 border border-orange-800/50 rounded-xl p-2.5 text-center">
+                            <p class="text-[10px] font-bold text-orange-400">警報</p>
+                            <p id="countWarning" class="text-xl sm:text-2xl font-black text-orange-400 mt-0.5">0</p>
+                            <p class="text-[9px] text-orange-300/70">市町村</p>
+                        </div>
+                        <!-- Advisory Count -->
+                        <div class="bg-yellow-950/40 border border-yellow-800/50 rounded-xl p-2.5 text-center">
+                            <p class="text-[10px] font-bold text-yellow-400">注意報</p>
+                            <p id="countAdvisory" class="text-xl sm:text-2xl font-black text-yellow-400 mt-0.5">0</p>
+                            <p class="text-[9px] text-yellow-300/70">市町村</p>
+                        </div>
+                    </div>
+
+                    <!-- Warning Types Summary Chips -->
+                    <div class="mt-5 space-y-2">
+                        <h3 class="text-xs font-bold text-slate-300 flex items-center justify-between">
+                            <span>発令中の警報・注意報 種別</span>
+                            <span id="activeTypesCount" class="text-[11px] font-normal text-slate-400">0種類</span>
+                        </h3>
+                        <div id="warningTypeBadges" class="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Utilities: Copy Text & Share -->
+                <div class="pt-4 border-t border-slate-800 space-y-2">
+                    <button onclick="copyWarningReport()" class="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition border border-slate-700 flex items-center justify-center gap-2 shadow-sm active:scale-95">
+                        <i class="fa-regular fa-copy"></i>
+                        <span>状況まとめテキストをコピー</span>
+                    </button>
+                    <div id="copyNotice" class="text-[11px] text-emerald-400 text-center opacity-0 transition-opacity duration-300">
+                        クリップボードにコピーしました！
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Main Area: Municipalities Details Table / Cards Grid -->
+            <div id="municipalitySection" class="lg:col-span-2 glass-panel rounded-2xl p-5 shadow-xl flex flex-col justify-between">
+                <div>
+                    <!-- Filter and Search Header -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-city text-amber-500"></i> 市区町村別の発令状況
+                            </h3>
+                            <span id="totalMunicipalitiesCount" class="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-300">0地域</span>
+                        </div>
+
+                        <!-- Municipality Search & Filter Inputs -->
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <div class="relative flex-1 sm:w-48">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-slate-400"></i>
+                                <input type="text" id="muniSearchInput" oninput="filterMunicipalities()" placeholder="市区町村名を検索..." class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl pl-8 pr-3 py-1.5 focus:outline-none focus:border-amber-500">
+                            </div>
+
+                            <!-- Severity Filter Tabs -->
+                            <select id="severityFilter" onchange="filterMunicipalities()" class="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-amber-500 cursor-pointer">
+                                <option value="all">すべて表示</option>
+                                <option value="alert">警報・特別警報のみ</option>
+                                <option value="any">注意報以上あり</option>
+                                <option value="clear">警報なしのみ</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Legend Indicator Bar -->
+                    <div class="flex items-center gap-3 my-3 text-[11px] text-slate-400 overflow-x-auto pb-1">
+                        <span class="font-semibold text-slate-300 shrink-0">凡例:</span>
+                        <span class="inline-flex items-center gap-1 shrink-0"><span class="w-2.5 h-2.5 rounded-full bg-purple-600"></span> 特別警報</span>
+                        <span class="inline-flex items-center gap-1 shrink-0"><span class="w-2.5 h-2.5 rounded-full bg-red-600"></span> 警報</span>
+                        <span class="inline-flex items-center gap-1 shrink-0"><span class="w-2.5 h-2.5 rounded-full bg-yellow-500"></span> 注意報</span>
+                        <span class="inline-flex items-center gap-1 shrink-0"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> 発表なし</span>
+                    </div>
+
+                    <!-- Municipalities Scrollable Grid -->
+                    <div id="municipalitiesList" class="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </div>
+
+                <!-- Footer Status Bar -->
+                <div class="pt-3 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between mt-4">
+                    <span>データ出典: <a href="https://www.jma.go.jp/" target="_blank" rel="noopener" class="underline hover:text-amber-400">気象庁 (JMA) 防災情報</a></span>
+                    <span id="lastUpdatedTimestamp">---</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Weather Legend & Advisory Guidelines Section -->
+        <section class="glass-panel rounded-2xl p-5 shadow-xl space-y-4">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-2">
+                <i class="fa-solid fa-shield-halved text-amber-500"></i> 気象警報・熱中症アラートの分類と行動の目安
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+                <!-- Heatstroke Special / Alert -->
+                <div class="bg-rose-950/30 border border-rose-800/40 rounded-xl p-3 space-y-1">
+                    <div class="flex items-center justify-between">
+                        <span class="px-2 py-0.5 rounded bg-rose-600 text-white font-bold text-[10px]">熱中症警戒</span>
+                        <span class="text-rose-300 font-bold text-[11px]">暑さ指数(WBGT)33以上</span>
+                    </div>
+                    <p class="font-semibold text-rose-200">極めて危険な暑さ・熱中症予防</p>
+                    <p class="text-slate-300 text-[10px] leading-relaxed">エアコンを適切に使用し、不要不急の外出や屋外での運動を避けて水分・塩分を補給してください。</p>
+                </div>
+                <!-- Level 5 Emergency -->
+                <div class="bg-purple-950/30 border border-purple-800/40 rounded-xl p-3 space-y-1">
+                    <div class="flex items-center justify-between">
+                        <span class="px-2 py-0.5 rounded bg-purple-700 text-white font-bold text-[10px]">特別警報</span>
+                        <span class="text-purple-300 font-bold text-[11px]">警戒レベル5相当</span>
+                    </div>
+                    <p class="font-semibold text-purple-200">命の危険が迫っている異常事態</p>
+                    <p class="text-slate-300 text-[10px] leading-relaxed">数年に一度の重大な災害が予想されます。直ちに身の安全を確保してください。</p>
+                </div>
+                <!-- Level 3-4 Warning -->
+                <div class="bg-red-950/30 border border-red-800/40 rounded-xl p-3 space-y-1">
+                    <div class="flex items-center justify-between">
+                        <span class="px-2 py-0.5 rounded bg-red-600 text-white font-bold text-[10px]">警報</span>
+                        <span class="text-red-300 font-bold text-[11px]">警戒レベル3〜4相当</span>
+                    </div>
+                    <p class="font-semibold text-red-200">重大な災害が発生するおそれ</p>
+                    <p class="text-slate-300 text-[10px] leading-relaxed">危険な場所からの避難や、高齢者等の早期避難が必要です。ハザードマップを確認してください。</p>
+                </div>
+                <!-- Level 2 Advisory -->
+                <div class="bg-yellow-950/30 border border-yellow-800/40 rounded-xl p-3 space-y-1">
+                    <div class="flex items-center justify-between">
+                        <span class="px-2 py-0.5 rounded bg-yellow-600 text-white font-bold text-[10px]">注意報</span>
+                        <span class="text-yellow-300 font-bold text-[11px]">警戒レベル2相当</span>
+                    </div>
+                    <p class="font-semibold text-yellow-200">災害が発生するおそれがある</p>
+                    <p class="text-slate-300 text-[10px] leading-relaxed">最新の気象情報に注意し、避難行動の確認や身の回りの準備を行ってください。</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="glass-panel border-t border-slate-800 py-6 mt-8">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400 space-y-2">
+            <p>※ 本アプリは気象庁が提供する防災情報（JSONデータ）を利用しています。</p>
+            <p class="text-[11px] text-slate-500">© Weather Warning Watcher - Disaster Prevention & Real-time Weather Alerts Dashboard</p>
+        </div>
+    </footer>
+
+    <!-- OBS Compact Overlay Layer (Displayed when OBS Mode is Active) -->
+    <div id="obsOverlayContainer" class="hidden fixed inset-0 z-50 pointer-events-none p-4 flex flex-col justify-between">
+        <!-- Exit OBS Mode Floating Button -->
+        <div class="pointer-events-auto absolute top-2 right-2 opacity-20 hover:opacity-100 transition-opacity z-50">
+            <button onclick="exitObsMode()" class="bg-slate-900/90 text-white text-xs px-3 py-1.5 rounded-lg border border-slate-700 shadow-xl flex items-center gap-1.5">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span>ダッシュボードに戻る</span>
+            </button>
+        </div>
+
+        <!-- OBS Overlay Body Component (Dynamic Content) -->
+        <div id="obsOverlayContent" class="pointer-events-auto w-full h-full flex flex-col justify-end">
+            <!-- Dynamic Injected Content by JS -->
+        </div>
+    </div>
+
+    <!-- OBS Mode Configurator Modal -->
+    <div id="obsModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-indigo-500/30 shadow-2xl space-y-5 text-slate-100 relative max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
+                        <i class="fa-solid fa-desktop"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-white">OBS画面表示 (ブラウザソース) 設定</h3>
+                        <p class="text-xs text-slate-400">配信画面へコンパクトに気象情報をリアルタイムオーバーレイ</p>
+                    </div>
+                </div>
+                <button onclick="closeObsModal()" class="text-slate-400 hover:text-white transition text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- OBS Settings Controls -->
+            <div class="space-y-4 text-xs">
+                <!-- Target Region Selector for OBS -->
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">対象地域 (都道府県):</label>
+                    <select id="obsPrefSelect" class="w-full bg-slate-900 border border-slate-700 text-amber-300 font-medium rounded-xl px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+
+                <!-- Layout Type Selector -->
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">表示レイアウト形式:</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="cursor-pointer border border-slate-700 bg-slate-900 rounded-xl p-2.5 text-center hover:border-indigo-500 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-950/40">
+                            <input type="radio" name="obsLayout" value="ticker" checked class="hidden" onchange="onObsLayoutChange()">
+                            <i class="fa-solid fa-scroll text-lg mb-1 text-indigo-400 block"></i>
+                            <span class="font-bold block">テロップ型</span>
+                            <span class="text-[10px] text-slate-400 block mt-0.5">画面幅の横長テロップ</span>
+                        </label>
+                        <label class="cursor-pointer border border-slate-700 bg-slate-900 rounded-xl p-2.5 text-center hover:border-indigo-500 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-950/40">
+                            <input type="radio" name="obsLayout" value="card" class="hidden" onchange="onObsLayoutChange()">
+                            <i class="fa-solid fa-id-card text-lg mb-1 text-amber-400 block"></i>
+                            <span class="font-bold block">カード型</span>
+                            <span class="text-[10px] text-slate-400 block mt-0.5">画面隅のミニパネル (最大10件/枚)</span>
+                        </label>
+                        <label class="cursor-pointer border border-slate-700 bg-slate-900 rounded-xl p-2.5 text-center hover:border-indigo-500 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-950/40">
+                            <input type="radio" name="obsLayout" value="badge" class="hidden" onchange="onObsLayoutChange()">
+                            <i class="fa-solid fa-shield-cat text-lg mb-1 text-red-400 block"></i>
+                            <span class="font-bold block">ミニバッジ型</span>
+                            <span class="text-[10px] text-slate-400 block mt-0.5">地域名+警報を順次1件ずつループ</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Position Selector for Card/Badge/Ticker Layouts -->
+                <div id="obsPositionGroup">
+                    <label id="obsPosLabel" class="block font-semibold text-slate-300 mb-1">表示位置:</label>
+                    <div id="obsPosOptions" class="grid grid-cols-3 gap-2">
+                        <!-- Populated dynamically based on selected layout -->
+                    </div>
+                </div>
+
+                <!-- Display Options -->
+                <div class="space-y-2 pt-1 border-t border-slate-800">
+                    <label class="flex items-center justify-between cursor-pointer py-1">
+                        <span class="font-medium text-slate-300">背景透過（透明背景）</span>
+                        <input type="checkbox" id="obsOptTransparent" checked onchange="updateObsUrlPreview()" class="w-4 h-4 accent-indigo-500 rounded cursor-pointer">
+                    </label>
+                    <label class="flex items-center justify-between cursor-pointer py-1">
+                        <span class="font-medium text-slate-300">警報なし（平常時）は自動で非表示</span>
+                        <input type="checkbox" id="obsOptAutohide" checked onchange="updateObsUrlPreview()" class="w-4 h-4 accent-indigo-500 rounded cursor-pointer">
+                    </label>
+                </div>
+
+                <!-- OBS URL Generator Field -->
+                <div class="space-y-1.5 pt-2 border-t border-slate-800">
+                    <label class="block font-semibold text-amber-400">OBSソース貼付用 専用URL:</label>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="obsGeneratedUrl" readonly class="w-full bg-slate-950 border border-slate-700 text-slate-300 text-[11px] font-mono rounded-xl px-3 py-2 select-all focus:outline-none">
+                        <button onclick="copyObsUrl()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-xs shrink-0 transition active:scale-95 flex items-center gap-1">
+                            <i class="fa-regular fa-copy"></i>
+                            <span>コピー</span>
+                        </button>
+                    </div>
+                    <div id="obsCopyNotice" class="text-[10px] text-emerald-400 opacity-0 transition-opacity">
+                        URLをクリップボードにコピーしました！OBSのブラウザソースに貼り付けてください。
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Bottom Actions -->
+            <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+                <button onclick="closeObsModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-xs transition">
+                    閉じる
+                </button>
+                <button onclick="enterObsModeFromModal()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition shadow-lg flex items-center gap-1.5">
+                    <i class="fa-solid fa-play"></i>
+                    <span>この画面でテスト表示</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Weather Warning Application JavaScript
+         * - Fetches live weather warnings from JMA (Japan Meteorological Agency) API
+         * - Maps prefecture codes & municipality codes (class20s / class15s / class10s)
+         * - Supports real-time & simulation/demo modes
+         * - Provides audio alarm using Web Audio API
+         * - Provides OBS Studio Overlay logic (Ticker, Card pages, Badge single-item loop)
+         */
+
+        // Standard JMA Prefecture Offices Master
+        const PREFECTURES = [
+            // 北海道
+            { code: "016000", name: "北海道 (札幌)", region: "北海道", lat: 43.0642, lng: 141.3469 },
+            { code: "011000", name: "北海道 (宗谷)", region: "北海道", lat: 45.4156, lng: 141.6733 },
+            { code: "012000", name: "北海道 (網走・北見・紋別)", region: "北海道", lat: 44.0206, lng: 144.2733 },
+            { code: "013000", name: "北海道 (釧路・根室)", region: "北海道", lat: 42.9849, lng: 144.3818 },
+            { code: "014000", name: "北海道 (胆振・日高)", region: "北海道", lat: 42.3152, lng: 140.9738 },
+            { code: "015000", name: "北海道 (渡島・檜山)", region: "北海道", lat: 41.7687, lng: 140.7288 },
+            { code: "017000", name: "北海道 (留萌・上川)", region: "北海道", lat: 43.7706, lng: 142.3650 },
+            // 東北
+            { code: "020000", name: "青森県", region: "東北", lat: 40.8244, lng: 140.7400 },
+            { code: "030000", name: "岩手県", region: "東北", lat: 39.7036, lng: 141.1527 },
+            { code: "040000", name: "宮城県", region: "東北", lat: 38.2688, lng: 140.8719 },
+            { code: "050000", name: "秋田県", region: "東北", lat: 39.7186, lng: 140.1024 },
+            { code: "060000", name: "山形県", region: "東北", lat: 38.2404, lng: 140.3633 },
+            { code: "070000", name: "福島県", region: "東北", lat: 37.7608, lng: 140.4748 },
+            // 関東甲信
+            { code: "080000", name: "茨城県", region: "関東甲信", lat: 36.3418, lng: 140.4468 },
+            { code: "090000", name: "栃木県", region: "関東甲信", lat: 36.5657, lng: 139.8836 },
+            { code: "100000", name: "群馬県", region: "関東甲信", lat: 36.3907, lng: 139.0604 },
+            { code: "110000", name: "埼玉県", region: "関東甲信", lat: 35.8569, lng: 139.6489 },
+            { code: "120000", name: "千葉県", region: "関東甲信", lat: 35.6047, lng: 140.1233 },
+            { code: "130000", name: "東京都", region: "関東甲信", lat: 35.6895, lng: 139.6917 },
+            { code: "140000", name: "神奈川県", region: "関東甲信", lat: 35.4478, lng: 139.6425 },
+            { code: "190000", name: "山梨県", region: "関東甲信", lat: 35.6639, lng: 138.5683 },
+            { code: "200000", name: "長野県", region: "関東甲信", lat: 36.6513, lng: 138.1812 },
+            // 北陸
+            { code: "150000", name: "新潟県", region: "北陸", lat: 37.9022, lng: 139.0236 },
+            { code: "160000", name: "富山県", region: "北陸", lat: 36.6953, lng: 137.2113 },
+            { code: "170000", name: "石川県", region: "北陸", lat: 36.5944, lng: 136.6256 },
+            { code: "180000", name: "福井県", region: "北陸", lat: 36.0652, lng: 136.2216 },
+            // 東海
+            { code: "210000", name: "岐阜県", region: "東海", lat: 35.3912, lng: 136.7223 },
+            { code: "220000", name: "静岡県", region: "東海", lat: 34.9769, lng: 138.3831 },
+            { code: "230000", name: "愛知県", region: "東海", lat: 35.1802, lng: 136.9066 },
+            { code: "240000", name: "三重県", region: "東海", lat: 34.7303, lng: 136.5086 },
+            // 近畿
+            { code: "250000", name: "滋賀県", region: "近畿", lat: 35.0045, lng: 135.8686 },
+            { code: "260000", name: "京都府", region: "近畿", lat: 35.0211, lng: 135.7556 },
+            { code: "270000", name: "大阪府", region: "近畿", lat: 34.6937, lng: 135.5023 },
+            { code: "280000", name: "兵庫県", region: "近畿", lat: 34.6913, lng: 135.1830 },
+            { code: "290000", name: "奈良県", region: "近畿", lat: 34.6853, lng: 135.8327 },
+            { code: "300000", name: "和歌山県", region: "近畿", lat: 34.2260, lng: 135.1675 },
+            // 中国
+            { code: "310000", name: "鳥取県", region: "中国", lat: 35.5011, lng: 134.2351 },
+            { code: "320000", name: "島根県", region: "中国", lat: 35.4723, lng: 133.0505 },
+            { code: "330000", name: "岡山県", region: "中国", lat: 34.6618, lng: 133.9344 },
+            { code: "340000", name: "広島県", region: "中国", lat: 34.3963, lng: 132.4594 },
+            { code: "350000", name: "山口県", region: "中国", lat: 34.1858, lng: 131.4714 },
+            // 四国
+            { code: "360000", name: "徳島県", region: "四国", lat: 34.0657, lng: 134.5593 },
+            { code: "370000", name: "香川県", region: "四国", lat: 34.3401, lng: 134.0433 },
+            { code: "380000", name: "愛媛県", region: "四国", lat: 33.8416, lng: 132.7657 },
+            { code: "390000", name: "高知県", region: "四国", lat: 33.5597, lng: 133.5311 },
+            // 九州・沖縄
+            { code: "400000", name: "福岡県", region: "九州・沖縄", lat: 33.6064, lng: 130.4183 },
+            { code: "410000", name: "佐賀県", region: "九州・沖縄", lat: 33.2494, lng: 130.2988 },
+            { code: "420000", name: "長崎県", region: "九州・沖縄", lat: 32.7503, lng: 129.8777 },
+            { code: "430000", name: "熊本県", region: "九州・沖縄", lat: 32.7898, lng: 130.7417 },
+            { code: "440000", name: "大分県", region: "九州・沖縄", lat: 33.2382, lng: 131.6126 },
+            { code: "450000", name: "宮崎県", region: "九州・沖縄", lat: 31.9111, lng: 131.4239 },
+            { code: "460100", name: "鹿児島県", region: "九州・沖縄", lat: 31.5602, lng: 130.5581 },
+            { code: "471000", name: "沖縄県", region: "九州・沖縄", lat: 26.2124, lng: 127.6809 }
+        ];
+
+        // JMA Warning Code Definitions Mapping
+        const WARNING_CODES = {
+            "02": { name: "暴風雪特別警報", level: "emergency", type: "snowstorm" },
+            "03": { name: "大雨特別警報", level: "emergency", type: "rain" },
+            "04": { name: "暴風特別警報", level: "emergency", type: "gale" },
+            "05": { name: "波浪特別警報", level: "emergency", type: "wave" },
+            "06": { name: "高潮特別警報", level: "emergency", type: "surge" },
+            "07": { name: "大雪特別警報", level: "emergency", type: "snow" },
+            "08": { name: "認定特別警報", level: "emergency", type: "other" },
+            "10": { name: "大雨警報", level: "warning", type: "rain" },
+            "12": { name: "大雪警報", level: "warning", type: "snow" },
+            "13": { name: "風雪警報", level: "warning", type: "snowstorm" },
+            "14": { name: "暴風警報", level: "warning", type: "gale" },
+            "15": { name: "波浪警報", level: "warning", type: "wave" },
+            "16": { name: "高潮警報", level: "warning", type: "surge" },
+            "17": { name: "洪水警報", level: "warning", type: "flood" },
+            "20": { name: "大雨注意報", level: "advisory", type: "rain" },
+            "21": { name: "洪水注意報", level: "advisory", type: "flood" },
+            "22": { name: "大雪注意報", level: "advisory", type: "snow" },
+            "23": { name: "風雪注意報", level: "advisory", type: "snowstorm" },
+            "24": { name: "強風注意報", level: "advisory", type: "gale" },
+            "25": { name: "波浪注意報", level: "advisory", type: "wave" },
+            "26": { name: "高潮注意報", level: "advisory", type: "surge" },
+            "27": { name: "融雪注意報", level: "advisory", type: "snowmelt" },
+            "28": { name: "雷注意報", level: "advisory", type: "thunder" },
+            "29": { name: "乾燥注意報", level: "advisory", type: "dry" },
+            "30": { name: "濃霧注意報", level: "advisory", type: "fog" },
+            "31": { name: "なだれ注意報", level: "advisory", type: "avalanche" },
+            "32": { name: "低温注意報", level: "advisory", type: "cold" },
+            "33": { name: "霜注意報", level: "advisory", type: "frost" },
+            "34": { name: "着氷注意報", level: "advisory", type: "ice" },
+            "35": { name: "着雪注意報", level: "advisory", type: "snowacc" },
+            "36": { name: "その他の注意報", level: "advisory", type: "other" },
+            "40": { name: "熱中症警戒アラート", level: "heatstroke", type: "heat" },
+            "41": { name: "熱中症特別警戒アラート", level: "heatstroke_special", type: "heat" }
+        };
+
+        // 主要なエリアコード（一次細分区域・地域等）のフォールバック名称マップ
+        const COMMON_AREA_NAMES = {
+            "130010": "東京地方",
+            "130020": "伊豆諸島北部",
+            "130030": "伊豆諸島南部",
+            "130040": "小笠原諸島",
+            "016010": "石狩地方",
+            "016020": "空知地方",
+            "016030": "後志地方",
+            "140010": "横浜・川崎",
+            "140020": "湘南",
+            "140030": "相模原",
+            "140040": "足柄上",
+            "140050": "西湘",
+            "270010": "大阪市",
+            "270020": "北摂",
+            "270030": "東部",
+            "270040": "南河内",
+            "270050": "泉州"
+        };
+
+        // Application State
+        let currentPrefectureCode = "130000"; // Default 東京都
+        let currentDataMode = "live";
+        let masterAreaData = null;
+        let currentWarningData = null;
+        let isAudioEnabled = false;
+        let audioCtx = null;
+
+        // Auto Refresh State
+        let autoRefreshSeconds = 180; // Default 3 min
+        let remainingSeconds = 180;
+        let countdownTimerId = null;
+
+        // OBS Mode State
+        let isObsMode = false;
+        let obsBadgeTimer = null;
+        let obsBadgeIndex = 0;
+        let obsCardPageIndex = 0;
+        let obsConfig = {
+            layout: 'ticker',
+            position: 'top-left',
+            transparent: true,
+            autohide: true,
+            pref: '130000'
+        };
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            initPrefectureSelectors();
+            await loadAreaMaster();
+
+            // Parse URL Query parameters for OBS mode
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('obs') === '1' || urlParams.get('mode') === 'obs') {
+                isObsMode = true;
+                obsConfig.layout = urlParams.get('layout') || 'ticker';
+                obsConfig.position = urlParams.get('pos') || 'top-left';
+                obsConfig.transparent = urlParams.get('transparent') !== '0';
+                obsConfig.autohide = urlParams.get('autohide') !== '0';
+                if (urlParams.get('pref')) {
+                    currentPrefectureCode = urlParams.get('pref');
+                    obsConfig.pref = urlParams.get('pref');
+                }
+            }
+
+            await fetchWeatherData();
+            startAutoRefreshTimer();
+
+            if (isObsMode) {
+                applyObsModeStyles();
+            }
+        });
+
+        function handleAutoRefreshChange(val) {
+            autoRefreshSeconds = parseInt(val, 10);
+            resetCountdown();
+        }
+
+        function startAutoRefreshTimer() {
+            if (countdownTimerId) clearInterval(countdownTimerId);
+
+            countdownTimerId = setInterval(() => {
+                if (autoRefreshSeconds === 0) {
+                    updateCountdownBadge('OFF');
+                    return;
+                }
+
+                remainingSeconds--;
+                if (remainingSeconds <= 0) {
+                    fetchWeatherData();
+                    remainingSeconds = autoRefreshSeconds;
+                }
+                updateCountdownBadge();
+            }, 1000);
+
+            updateCountdownBadge();
+        }
+
+        function resetCountdown() {
+            remainingSeconds = autoRefreshSeconds;
+            updateCountdownBadge();
+        }
+
+        function updateCountdownBadge(customText) {
+            const badge = document.getElementById('countdownBadge');
+            if (!badge) return;
+
+            if (customText) {
+                badge.textContent = customText;
+                badge.className = 'px-1.5 py-0.5 rounded bg-slate-900 text-[11px] font-mono font-semibold text-slate-500 border border-slate-700';
+                return;
+            }
+
+            if (autoRefreshSeconds === 0) {
+                badge.textContent = 'OFF';
+                badge.className = 'px-1.5 py-0.5 rounded bg-slate-900 text-[11px] font-mono font-semibold text-slate-500 border border-slate-700';
+                return;
+            }
+
+            const m = Math.floor(remainingSeconds / 60).toString().padStart(2, '0');
+            const s = (remainingSeconds % 60).toString().padStart(2, '0');
+            badge.textContent = `${m}:${s}`;
+            badge.className = 'px-1.5 py-0.5 rounded bg-slate-900 text-[11px] font-mono font-semibold text-amber-400 border border-amber-500/30';
+        }
+
+        function initPrefectureSelectors() {
+            const selectEl = document.getElementById('prefectureSelect');
+            const chipsEl = document.getElementById('prefectureChips');
+            const groupBtnsEl = document.getElementById('regionGroupButtons');
+
+            if (!selectEl || !chipsEl || !groupBtnsEl) return;
+
+            selectEl.innerHTML = '';
+            chipsEl.innerHTML = '';
+            groupBtnsEl.innerHTML = '';
+
+            const regions = [...new Set(PREFECTURES.map(p => p.region))];
+
+            const allBtn = document.createElement('button');
+            allBtn.className = 'px-3 py-1 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs transition shadow-sm';
+            allBtn.innerText = 'すべて';
+            allBtn.onclick = () => renderPrefectureChips('all', allBtn);
+            groupBtnsEl.appendChild(allBtn);
+
+            regions.forEach(reg => {
+                const btn = document.createElement('button');
+                btn.className = 'px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition border border-slate-700';
+                btn.innerText = reg;
+                btn.onclick = () => renderPrefectureChips(reg, btn);
+                groupBtnsEl.appendChild(btn);
+            });
+
+            PREFECTURES.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.code;
+                opt.textContent = p.name;
+                selectEl.appendChild(opt);
+            });
+
+            renderPrefectureChips('all');
+        }
+
+        function renderPrefectureChips(regionFilter, targetBtn = null) {
+            const chipsEl = document.getElementById('prefectureChips');
+            if (!chipsEl) return;
+            chipsEl.innerHTML = '';
+
+            if (targetBtn) {
+                const btns = document.querySelectorAll('#regionGroupButtons button');
+                btns.forEach(b => {
+                    b.className = 'px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition border border-slate-700';
+                });
+                targetBtn.className = 'px-3 py-1 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs transition shadow-sm';
+            }
+
+            const filtered = regionFilter === 'all' 
+                ? PREFECTURES 
+                : PREFECTURES.filter(p => p.region === regionFilter);
+
+            filtered.forEach(p => {
+                const chip = document.createElement('button');
+                const isSelected = p.code === currentPrefectureCode;
+                chip.className = `px-3 py-1.5 rounded-xl text-xs font-medium transition flex items-center gap-1.5 ${
+                    isSelected 
+                        ? 'bg-amber-500 text-slate-950 font-bold shadow-md scale-105' 
+                        : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60'
+                }`;
+                chip.innerHTML = `<span>${p.name}</span>`;
+                chip.onclick = () => selectPrefecture(p.code);
+                chipsEl.appendChild(chip);
+            });
+        }
+
+        function selectPrefecture(code) {
+            currentPrefectureCode = code;
+            const selectEl = document.getElementById('prefectureSelect');
+            if (selectEl) selectEl.value = code;
+            
+            const activeRegionBtn = document.querySelector('#regionGroupButtons button.bg-amber-500');
+            const currentFilter = activeRegionBtn ? activeRegionBtn.innerText : 'すべて';
+            renderPrefectureChips(currentFilter === 'すべて' ? 'all' : currentFilter);
+
+            fetchWeatherData();
+        }
+
+        async function loadAreaMaster() {
+            try {
+                const res = await fetch('https://www.jma.go.jp/bosai/common/const/area.json');
+                if (res.ok) {
+                    masterAreaData = await res.json();
+                }
+            } catch (err) {
+                console.warn('JMA area.json fetch failed, using fallback area resolution:', err);
+            }
+        }
+
+        function getAreaNameFromMaster(code) {
+            if (!code) return "名称不明地域";
+            if (masterAreaData) {
+                if (masterAreaData.class20s && masterAreaData.class20s[code]) return masterAreaData.class20s[code].name;
+                if (masterAreaData.class15s && masterAreaData.class15s[code]) return masterAreaData.class15s[code].name;
+                if (masterAreaData.class10s && masterAreaData.class10s[code]) return masterAreaData.class10s[code].name;
+                if (masterAreaData.offices && masterAreaData.offices[code]) return masterAreaData.offices[code].name;
+                if (masterAreaData.centers && masterAreaData.centers[code]) return masterAreaData.centers[code].name;
+            }
+            if (COMMON_AREA_NAMES[code]) {
+                return COMMON_AREA_NAMES[code];
+            }
+            return `地域 (${code})`;
+        }
+
+        function handleModeChange(val) {
+            currentDataMode = val;
+            fetchWeatherData();
+        }
+
+        async function fetchWeatherData(isManualRefresh = false) {
+            const refreshIcon = document.getElementById('refreshIcon');
+            if (refreshIcon) refreshIcon.classList.add('fa-spin');
+
+            resetCountdown();
+
+            try {
+                if (currentDataMode === 'live') {
+                    const url = `https://www.jma.go.jp/bosai/warning/data/warning/${currentPrefectureCode}.json`;
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
+                    const rawData = await res.json();
+                    parseAndRenderWarningData(rawData);
+                } else {
+                    const demoData = generateDemoData(currentDataMode, currentPrefectureCode);
+                    parseAndRenderWarningData(demoData);
+                }
+            } catch (err) {
+                console.error('Fetch weather data error:', err);
+                if (currentDataMode === 'live') {
+                    const demoData = generateDemoData('demo_typhoon', currentPrefectureCode);
+                    parseAndRenderWarningData(demoData);
+                }
+            } finally {
+                if (refreshIcon) refreshIcon.classList.remove('fa-spin');
+            }
+        }
+
+        function generateDemoData(mode, prefCode) {
+            const pref = PREFECTURES.find(p => p.code === prefCode) || PREFECTURES[0];
+            const now = new Date().toISOString();
+
+            if (mode === 'demo_heatstroke') {
+                return {
+                    publishingOffice: `${pref.name}気象台・環境省`,
+                    reportDatetime: now,
+                    areaTypes: [{
+                        areaType: "class20",
+                        areas: [
+                            { code: prefCode + "01", name: `${pref.name} 都心部`, warnings: [{ code: "41", status: "発表" }, { code: "28", status: "継続" }] },
+                            { code: prefCode + "02", name: `${pref.name} 東部`, warnings: [{ code: "40", status: "発表" }] },
+                            { code: prefCode + "03", name: `${pref.name} 西部`, warnings: [{ code: "40", status: "発表" }] },
+                            { code: prefCode + "04", name: `${pref.name} 臨海部`, warnings: [{ code: "40", status: "発表" }, { code: "24", status: "継続" }] }
+                        ]
+                    }]
+                };
+            }
+
+            if (mode === 'demo_clear') {
+                return {
+                    publishingOffice: `${pref.name}気象台`,
+                    reportDatetime: now,
+                    areaTypes: [{
+                        areaType: "class20",
+                        areas: [
+                            { code: prefCode + "01", name: `${pref.name} 中央区`, warnings: [] },
+                            { code: prefCode + "02", name: `${pref.name} 北区`, warnings: [] },
+                            { code: prefCode + "03", name: `${pref.name} 南区`, warnings: [] }
+                        ]
+                    }]
+                };
+            }
+
+            if (mode === 'demo_snow') {
+                return {
+                    publishingOffice: `${pref.name}気象台`,
+                    reportDatetime: now,
+                    areaTypes: [{
+                        areaType: "class20",
+                        areas: [
+                            { code: prefCode + "01", name: `${pref.name} 北部市`, warnings: [{ code: "12", status: "発表" }, { code: "13", status: "発表" }] },
+                            { code: prefCode + "02", name: `${pref.name} 中央市`, warnings: [{ code: "22", status: "継続" }, { code: "23", status: "継続" }] },
+                            { code: prefCode + "03", name: `${pref.name} 豪雪町`, warnings: [{ code: "07", status: "特別警報発表" }, { code: "13", status: "発表" }] }
+                        ]
+                    }]
+                };
+            }
+
+            // Default: demo_typhoon
+            return {
+                publishingOffice: `${pref.name}気象台`,
+                reportDatetime: now,
+                areaTypes: [{
+                    areaType: "class20",
+                    areas: [
+                        { code: prefCode + "01", name: `${pref.name} 港区`, warnings: [{ code: "03", status: "特別警報発表" }, { code: "14", status: "発表" }] },
+                        { code: prefCode + "02", name: `${pref.name} 湾岸市`, warnings: [{ code: "10", status: "発表" }, { code: "14", status: "発表" }, { code: "17", status: "発表" }] },
+                        { code: prefCode + "03", name: `${pref.name} 山手町`, warnings: [{ code: "10", status: "発表" }, { code: "21", status: "継続" }] },
+                        { code: prefCode + "04", name: `${pref.name} 西市`, warnings: [{ code: "20", status: "継続" }, { code: "24", status: "継続" }] }
+                    ]
+                }]
+            };
+        }
+
+        function parseAndRenderWarningData(rawData) {
+            if (!rawData) return;
+            
+            const publishingOffice = rawData.publishingOffice || "気象庁";
+            const reportDatetime = rawData.reportDatetime 
+                ? new Date(rawData.reportDatetime).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                : "---";
+
+            document.getElementById('publishingOffice').textContent = publishingOffice;
+            document.getElementById('reportTime').textContent = `更新: ${reportDatetime}`;
+            document.getElementById('lastUpdatedTimestamp').textContent = `最終同期: ${new Date().toLocaleTimeString('ja-JP')}`;
+
+            const currentPref = PREFECTURES.find(p => p.code === currentPrefectureCode) || PREFECTURES[0];
+            document.getElementById('selectedPrefectureTitle').textContent = currentPref.name;
+            document.getElementById('selectedRegionTag').textContent = currentPref.region;
+
+            let munis = [];
+
+            if (rawData.areaTypes && rawData.areaTypes.length > 0) {
+                let muniAreaType = rawData.areaTypes.find(at => at.areaType === "class20" || (at.areas && at.areas.some(a => a.code && a.code.length === 7)));
+                if (!muniAreaType) {
+                    muniAreaType = rawData.areaTypes.find(at => at.areaType === "class15") || rawData.areaTypes.find(at => at.areaType === "class10") || rawData.areaTypes[0];
+                }
+                
+                if (muniAreaType && muniAreaType.areas) {
+                    muniAreaType.areas.forEach(area => {
+                        let name = area.name;
+                        if (!name) {
+                            name = getAreaNameFromMaster(area.code);
+                        }
+
+                        const warnings = [];
+                        let maxSeverity = 'clear';
+
+                        if (area.warnings) {
+                            area.warnings.forEach(w => {
+                                if (w.status === "解除" || w.status === "発表警報・注意報はなし" || !w.code) return;
+                                
+                                const def = WARNING_CODES[w.code];
+                                if (def) {
+                                    warnings.push({
+                                        code: w.code,
+                                        name: def.name,
+                                        level: def.level,
+                                        type: def.type,
+                                        status: w.status || ''
+                                    });
+
+                                    if (def.level === 'heatstroke_special' || def.level === 'emergency') maxSeverity = 'emergency';
+                                    else if ((def.level === 'heatstroke' || def.level === 'warning') && maxSeverity !== 'emergency') maxSeverity = 'warning';
+                                    else if (def.level === 'advisory' && maxSeverity === 'clear') maxSeverity = 'advisory';
+                                }
+                            });
+                        }
+
+                        munis.push({
+                            code: area.code,
+                            name: name,
+                            maxSeverity: maxSeverity,
+                            warnings: warnings
+                        });
+                    });
+                }
+            }
+
+            currentWarningData = {
+                prefInfo: currentPref,
+                publishingOffice: publishingOffice,
+                reportTime: reportDatetime,
+                municipalities: munis
+            };
+
+            renderDashboardOverview();
+            filterMunicipalities();
+
+            if (isObsMode || (document.getElementById('obsOverlayContainer') && !document.getElementById('obsOverlayContainer').classList.contains('hidden'))) {
+                renderObsOverlay();
+            }
+        }
+
+        function renderDashboardOverview() {
+            if (!currentWarningData) return;
+
+            const muniList = currentWarningData.municipalities;
+
+            let countHeatstroke = 0;
+            let countEmergency = 0;
+            let countWarning = 0;
+            let countAdvisory = 0;
+            const warningTypeCounts = {};
+
+            muniList.forEach(m => {
+                let hasHeat = false;
+                m.warnings.forEach(w => {
+                    warningTypeCounts[w.name] = (warningTypeCounts[w.name] || 0) + 1;
+                    if (w.level === 'heatstroke' || w.level === 'heatstroke_special') {
+                        hasHeat = true;
+                    }
+                });
+
+                if (hasHeat) countHeatstroke++;
+                if (m.maxSeverity === 'emergency') countEmergency++;
+                else if (m.maxSeverity === 'warning') countWarning++;
+                else if (m.maxSeverity === 'advisory') countAdvisory++;
+            });
+
+            document.getElementById('countHeatstroke').textContent = countHeatstroke;
+            document.getElementById('countEmergency').textContent = countEmergency;
+            document.getElementById('countWarning').textContent = countWarning;
+            document.getElementById('countAdvisory').textContent = countAdvisory;
+
+            const typeBadgesContainer = document.getElementById('warningTypeBadges');
+            typeBadgesContainer.innerHTML = '';
+
+            const typeKeys = Object.keys(warningTypeCounts);
+            document.getElementById('activeTypesCount').textContent = `${typeKeys.length}種類`;
+
+            if (typeKeys.length === 0) {
+                typeBadgesContainer.innerHTML = `<span class="text-xs text-emerald-400 flex items-center gap-1 py-1"><i class="fa-solid fa-circle-check"></i> 現在、警報・注意報は発表されていません</span>`;
+            } else {
+                typeKeys.forEach(typeName => {
+                    const count = warningTypeCounts[typeName];
+                    const sampleObj = Object.values(WARNING_CODES).find(w => w.name === typeName);
+                    const level = sampleObj ? sampleObj.level : 'advisory';
+
+                    let badgeStyle = 'bg-yellow-950/60 border-yellow-700/50 text-yellow-300';
+                    if (level === 'heatstroke_special') badgeStyle = 'bg-rose-950/90 border-rose-500 text-rose-200 font-bold pulse-emergency';
+                    else if (level === 'heatstroke') badgeStyle = 'bg-rose-950/70 border-rose-700 text-rose-300 font-bold';
+                    else if (level === 'emergency') badgeStyle = 'bg-purple-950/80 border-purple-600 text-purple-200 font-bold pulse-emergency';
+                    else if (level === 'warning') badgeStyle = 'bg-red-950/80 border-red-700/60 text-red-200 font-bold';
+
+                    const badge = document.createElement('span');
+                    badge.className = `px-2.5 py-1 rounded-lg border text-xs flex items-center gap-1.5 ${badgeStyle}`;
+                    badge.innerHTML = `<span>${typeName}</span><span class="px-1.5 py-0.2 rounded-full bg-black/40 text-[10px]">${count}</span>`;
+                    typeBadgesContainer.appendChild(badge);
+                });
+            }
+
+            const bannerEl = document.getElementById('criticalBanner');
+            const hasHeatstrokeAlert = countHeatstroke > 0;
+
+            if (hasHeatstrokeAlert || countEmergency > 0 || countWarning > 0) {
+                bannerEl.classList.remove('hidden');
+
+                if (hasHeatstrokeAlert && countEmergency === 0) {
+                    bannerEl.className = 'rounded-2xl p-4 sm:p-5 border shadow-2xl transition-all duration-300 bg-gradient-to-r from-rose-950 via-slate-900 to-orange-950 border-rose-500/60 text-white';
+                    document.getElementById('criticalBannerIcon').className = 'w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0 bg-rose-600 text-white shadow-lg';
+                    document.getElementById('criticalBadge').className = 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-500 text-white';
+                    document.getElementById('criticalBadge').textContent = '熱中症警戒アラート 発表中';
+                    document.getElementById('criticalTitle').textContent = `${currentWarningData.prefInfo.name} 内の ${countHeatstroke} 市区町村に【熱中症警戒アラート】が発表されています`;
+                    document.getElementById('criticalDesc').textContent = '極めて危険な暑さが予想されます。室内ではエアコンを適切に使用し、こまめな水分・塩分補給を行ってください。';
+                    triggerAudioAlarm('warning');
+                } else if (countEmergency > 0) {
+                    bannerEl.className = 'rounded-2xl p-4 sm:p-5 border shadow-2xl transition-all duration-300 bg-gradient-to-r from-purple-950 via-purple-900 to-red-950 border-purple-500/60 text-white pulse-emergency';
+                    document.getElementById('criticalBannerIcon').className = 'w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0 bg-purple-600 text-white shadow-lg';
+                    document.getElementById('criticalBadge').className = 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-purple-500 text-white';
+                    document.getElementById('criticalBadge').textContent = '特別警報 発令中 (警戒レベル5相当)';
+                    document.getElementById('criticalTitle').textContent = `${currentWarningData.prefInfo.name} 内の ${countEmergency} 市区町村に【特別警報】が発表されています`;
+                    document.getElementById('criticalDesc').textContent = '命の危険が迫っています。直ちに周囲の安全を確保し、適切な避難行動を行ってください。';
+                    triggerAudioAlarm('emergency');
+                } else {
+                    bannerEl.className = 'rounded-2xl p-4 sm:p-5 border shadow-xl transition-all duration-300 bg-gradient-to-r from-red-950 via-slate-900 to-orange-950 border-red-600/50 text-white';
+                    document.getElementById('criticalBannerIcon').className = 'w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0 bg-red-600 text-white shadow-lg';
+                    document.getElementById('criticalBadge').className = 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-red-500 text-white';
+                    document.getElementById('criticalBadge').textContent = '気象警報 発表中';
+                    document.getElementById('criticalTitle').textContent = `${currentWarningData.prefInfo.name} 内の ${countWarning} 市区町村に気象警報が発表されています`;
+                    document.getElementById('criticalDesc').textContent = '土砂災害や河川の増水・浸水・暴風等に警戒してください。最新のハザードマップを確認してください。';
+                    triggerAudioAlarm('warning');
+                }
+                document.getElementById('criticalTime').textContent = currentWarningData.reportTime;
+            } else {
+                bannerEl.classList.add('hidden');
+            }
+        }
+
+        function filterMunicipalities() {
+            if (!currentWarningData) return;
+
+            const searchQuery = document.getElementById('muniSearchInput').value.trim().toLowerCase();
+            const filterSeverity = document.getElementById('severityFilter').value;
+            const container = document.getElementById('municipalitiesList');
+            container.innerHTML = '';
+
+            let list = currentWarningData.municipalities;
+
+            if (searchQuery) {
+                list = list.filter(m => m.name.toLowerCase().includes(searchQuery));
+            }
+
+            if (filterSeverity === 'alert') {
+                list = list.filter(m => m.maxSeverity === 'emergency' || m.maxSeverity === 'warning');
+            } else if (filterSeverity === 'any') {
+                list = list.filter(m => m.maxSeverity !== 'clear');
+            } else if (filterSeverity === 'clear') {
+                list = list.filter(m => m.maxSeverity === 'clear');
+            }
+
+            document.getElementById('totalMunicipalitiesCount').textContent = `${list.length}地域`;
+
+            if (list.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-10 bg-slate-900/50 rounded-xl border border-slate-800">
+                        <i class="fa-solid fa-circle-check text-3xl text-emerald-500 mb-2"></i>
+                        <p class="text-sm font-semibold text-slate-300">該当する市区町村はありません</p>
+                        <p class="text-xs text-slate-500 mt-1">検索条件を変更するか、他の地域を選択してください</p>
+                    </div>
+                `;
+                return;
+            }
+
+            list.forEach(m => {
+                const card = document.createElement('div');
+                
+                let borderStyle = 'border-slate-800 bg-slate-900/60';
+                let statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-950 text-emerald-400 border border-emerald-800/50"><i class="fa-solid fa-check"></i> 発表なし</span>';
+
+                const hasHeat = m.warnings.some(w => w.level === 'heatstroke' || w.level === 'heatstroke_special');
+
+                if (m.maxSeverity === 'emergency') {
+                    borderStyle = 'border-purple-600/70 bg-purple-950/40 shadow-lg shadow-purple-950/30';
+                    statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-600 text-white border border-purple-400 animate-pulse">特別警報</span>';
+                } else if (m.maxSeverity === 'warning') {
+                    borderStyle = 'border-red-700/60 bg-red-950/30';
+                    statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-600 text-white">警報あり</span>';
+                } else if (m.maxSeverity === 'advisory') {
+                    borderStyle = 'border-yellow-700/50 bg-yellow-950/20';
+                    statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-yellow-600 text-slate-950">注意報あり</span>';
+                }
+
+                if (hasHeat && m.maxSeverity !== 'emergency') {
+                    borderStyle = 'border-rose-600/70 bg-rose-950/30 shadow-md shadow-rose-950/20';
+                }
+
+                let warningsHTML = '';
+                if (m.warnings.length > 0) {
+                    warningsHTML = '<div class="flex flex-wrap gap-1.5 mt-2">';
+                    m.warnings.forEach(w => {
+                        let tagClass = 'bg-yellow-950/80 border-yellow-700/60 text-yellow-300';
+                        if (w.level === 'heatstroke_special') tagClass = 'bg-rose-900/90 border-rose-400 text-white font-bold animate-pulse';
+                        else if (w.level === 'heatstroke') tagClass = 'bg-rose-900/80 border-rose-600 text-rose-100 font-bold';
+                        else if (w.level === 'emergency') tagClass = 'bg-purple-900/90 border-purple-500 text-white font-bold';
+                        else if (w.level === 'warning') tagClass = 'bg-red-900/90 border-red-500 text-red-100 font-bold';
+
+                        const statusText = w.status ? `<span class="text-[9px] opacity-75">(${w.status})</span>` : '';
+                        warningsHTML += `<span class="px-2 py-0.5 rounded border text-xs flex items-center gap-1 ${tagClass}">${w.name} ${statusText}</span>`;
+                    });
+                    warningsHTML += '</div>';
+                } else {
+                    warningsHTML = `<p class="text-xs text-slate-500 mt-1">現在発表されている注意報・警報はありません</p>`;
+                }
+
+                card.className = `rounded-xl p-3.5 border ${borderStyle} transition hover:border-slate-600 space-y-1.5`;
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-sm text-white">${m.name}</span>
+                        ${statusBadge}
+                    </div>
+                    ${warningsHTML}
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function toggleAudio() {
+            isAudioEnabled = !isAudioEnabled;
+            const btn = document.getElementById('soundToggleBtn');
+            const icon = document.getElementById('soundIcon');
+            
+            if (isAudioEnabled) {
+                btn.className = 'px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs sm:text-sm font-medium transition flex items-center gap-2 border border-amber-500 shadow';
+                icon.className = 'fa-solid fa-volume-high text-amber-200';
+                triggerAudioAlarm('warning');
+            } else {
+                btn.className = 'px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs sm:text-sm font-medium transition flex items-center gap-2 border border-slate-700';
+                icon.className = 'fa-solid fa-volume-xmark text-slate-400';
+            }
+        }
+
+        function triggerAudioAlarm(type) {
+            if (!isAudioEnabled) return;
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'emergency') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(880, now);
+                    osc.frequency.setValueAtTime(440, now + 0.2);
+                    osc.frequency.setValueAtTime(880, now + 0.4);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+                    osc.start(now);
+                    osc.stop(now + 0.6);
+                } else {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(587.33, now); // D5
+                    osc.frequency.setValueAtTime(880, now + 0.15); // A5
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                }
+            } catch (e) {
+                console.warn('Audio alarm playback error:', e);
+            }
+        }
+
+        function copyWarningReport() {
+            if (!currentWarningData) return;
+
+            const prefName = currentWarningData.prefInfo.name;
+            const timeStr = currentWarningData.reportTime;
+
+            let text = `【気象警報・注意報 発表状況】\n対象地域: ${prefName}\n発表時刻: ${timeStr}\n\n`;
+
+            const activeMunis = currentWarningData.municipalities.filter(m => m.maxSeverity !== 'clear');
+
+            if (activeMunis.length === 0) {
+                text += `現在、発表中の気象警報・注意報はありません。\n`;
+            } else {
+                activeMunis.forEach(m => {
+                    const wListStr = m.warnings.map(w => w.name).join('、');
+                    text += `・${m.name}: ${wListStr}\n`;
+                });
+            }
+
+            text += `\n出典: 気象庁防災情報 (リアルタイムモニターより出力)`;
+
+            const dummy = document.createElement('textarea');
+            dummy.value = text;
+            document.body.appendChild(dummy);
+            dummy.select();
+            document.execCommand('copy');
+            document.body.removeChild(dummy);
+
+            const notice = document.getElementById('copyNotice');
+            if (notice) {
+                notice.style.opacity = '1';
+                setTimeout(() => { notice.style.opacity = '0'; }, 2500);
+            }
+        }
+
+        function scrollToMunicipalityList() {
+            const el = document.getElementById('municipalitySection');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function detectLocation() {
+            if (!navigator.geolocation) {
+                alert('お使いのブラウザは位置情報サービスに対応していません。');
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+
+                    let closest = PREFECTURES[0];
+                    let minDistance = Infinity;
+
+                    PREFECTURES.forEach(p => {
+                        const dist = Math.hypot(p.lat - lat, p.lng - lng);
+                        if (dist < minDistance) {
+                            minDistance = dist;
+                            closest = p;
+                        }
+                    });
+
+                    selectPrefecture(closest.code);
+                },
+                (err) => {
+                    console.warn('Geolocation error:', err);
+                    selectPrefecture("130000"); // Fallback 東京都
+                }
+            );
+        }
+
+        function openObsModal() {
+            const modal = document.getElementById('obsModal');
+            if (!modal) return;
+            
+            const prefSelect = document.getElementById('obsPrefSelect');
+            if (prefSelect) {
+                prefSelect.innerHTML = '';
+                PREFECTURES.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.code;
+                    opt.textContent = p.name;
+                    if (p.code === currentPrefectureCode) opt.selected = true;
+                    prefSelect.appendChild(opt);
+                });
+                prefSelect.onchange = (e) => {
+                    obsConfig.pref = e.target.value;
+                    updateObsUrlPreview();
+                };
+            }
+            
+            modal.classList.remove('hidden');
+            updateObsPositionOptions();
+            updateObsUrlPreview();
+        }
+
+        function closeObsModal() {
+            const modal = document.getElementById('obsModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function onObsLayoutChange() {
+            updateObsPositionOptions();
+            updateObsUrlPreview();
+        }
+
+        function updateObsPositionOptions() {
+            const layout = document.querySelector('input[name="obsLayout"]:checked')?.value || 'ticker';
+            const container = document.getElementById('obsPosOptions');
+            if (!container) return;
+
+            const currentPos = document.querySelector('input[name="obsPos"]:checked')?.value;
+
+            if (layout === 'ticker') {
+                container.className = 'grid grid-cols-3 gap-2.5';
+                const opts = [
+                    { value: 'top', label: '上部', barPos: 'top-0 left-0 right-0 h-2.5' },
+                    { value: 'center', label: '中央', barPos: 'top-1/2 -translate-y-1/2 left-0 right-0 h-2.5' },
+                    { value: 'bottom', label: '下部', barPos: 'bottom-0 left-0 right-0 h-2.5' }
+                ];
+                const selectedVal = ['top', 'center', 'bottom'].includes(currentPos) ? currentPos : 'bottom';
+
+                container.innerHTML = opts.map(o => `
+                    <label class="cursor-pointer border border-slate-700 bg-slate-900 rounded-xl p-2 text-center hover:border-indigo-500 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-950/50 flex flex-col items-center gap-1.5 group">
+                        <input type="radio" name="obsPos" value="${o.value}" ${o.value === selectedVal ? 'checked' : ''} class="hidden" onchange="updateObsUrlPreview()">
+                        <div class="w-full aspect-video rounded-lg border border-slate-700/80 bg-slate-950 relative overflow-hidden group-has-[:checked]:border-indigo-500 group-has-[:checked]:ring-1 group-has-[:checked]:ring-indigo-500/50">
+                            <div class="absolute ${o.barPos} bg-indigo-500 group-has-[:checked]:bg-indigo-400"></div>
+                        </div>
+                        <span class="font-bold block text-xs group-has-[:checked]:text-indigo-300">${o.label}</span>
+                    </label>
+                `).join('');
+            } else {
+                container.className = 'grid grid-cols-2 gap-2.5 max-w-sm mx-auto';
+                const opts = [
+                    { value: 'top-left', label: '左上', dotPos: 'top-1.5 left-1.5' },
+                    { value: 'top-right', label: '右上', dotPos: 'top-1.5 right-1.5' },
+                    { value: 'bottom-left', label: '左下', dotPos: 'bottom-1.5 left-1.5' },
+                    { value: 'bottom-right', label: '右下', dotPos: 'bottom-1.5 right-1.5' }
+                ];
+                const selectedVal = ['top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(currentPos) ? currentPos : 'top-left';
+
+                container.innerHTML = opts.map(o => `
+                    <label class="cursor-pointer border border-slate-700 bg-slate-900 rounded-xl p-2 text-center hover:border-indigo-500 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-950/50 flex flex-col items-center gap-1.5 group">
+                        <input type="radio" name="obsPos" value="${o.value}" ${o.value === selectedVal ? 'checked' : ''} class="hidden" onchange="updateObsUrlPreview()">
+                        <div class="w-full aspect-video rounded-lg border border-slate-700/80 bg-slate-950 relative overflow-hidden group-has-[:checked]:border-indigo-500 group-has-[:checked]:ring-1 group-has-[:checked]:ring-indigo-500/50">
+                            <div class="absolute ${o.dotPos} w-6 h-4 rounded bg-indigo-500 group-has-[:checked]:bg-indigo-400 shadow-sm"></div>
+                        </div>
+                        <span class="font-bold block text-xs group-has-[:checked]:text-indigo-300">${o.label}</span>
+                    </label>
+                `).join('');
+            }
+        }
+
+        function updateObsUrlPreview() {
+            const prefSelect = document.getElementById('obsPrefSelect');
+            const selectedPref = prefSelect ? prefSelect.value : currentPrefectureCode;
+            const selectedLayout = document.querySelector('input[name="obsLayout"]:checked')?.value || 'ticker';
+            const selectedPos = document.querySelector('input[name="obsPos"]:checked')?.value || (selectedLayout === 'ticker' ? 'bottom' : 'top-left');
+            const transparent = document.getElementById('obsOptTransparent')?.checked ? '1' : '0';
+            const autohide = document.getElementById('obsOptAutohide')?.checked ? '1' : '0';
+
+            obsConfig = {
+                layout: selectedLayout,
+                position: selectedPos,
+                transparent: transparent === '1',
+                autohide: autohide === '1',
+                pref: selectedPref
+            };
+
+            const baseUrl = window.location.href.split('?')[0];
+            const obsUrl = `${baseUrl}?obs=1&pref=${selectedPref}&layout=${selectedLayout}&pos=${selectedPos}&transparent=${transparent}&autohide=${autohide}`;
+            
+            const urlInput = document.getElementById('obsGeneratedUrl');
+            if (urlInput) urlInput.value = obsUrl;
+        }
+
+        function copyObsUrl() {
+            const urlInput = document.getElementById('obsGeneratedUrl');
+            if (!urlInput) return;
+            
+            urlInput.select();
+            document.execCommand('copy');
+            
+            const notice = document.getElementById('obsCopyNotice');
+            if (notice) {
+                notice.classList.remove('opacity-0');
+                setTimeout(() => notice.classList.add('opacity-0'), 2500);
+            }
+        }
+
+        function enterObsModeFromModal() {
+            closeObsModal();
+            if (obsConfig.pref && obsConfig.pref !== currentPrefectureCode) {
+                selectPrefecture(obsConfig.pref);
+            }
+            isObsMode = true;
+            applyObsModeStyles();
+        }
+
+        function exitObsMode() {
+            isObsMode = false;
+            document.body.style.backgroundColor = '#0f172a';
+            
+            const header = document.querySelector('header');
+            const main = document.querySelector('main');
+            const footer = document.querySelector('footer');
+            const overlay = document.getElementById('obsOverlayContainer');
+
+            if (header) header.classList.remove('hidden');
+            if (main) main.classList.remove('hidden');
+            if (footer) footer.classList.remove('hidden');
+            if (overlay) {
+                overlay.classList.add('hidden');
+                overlay.classList.remove('flex');
+            }
+
+            if (obsBadgeTimer) {
+                clearInterval(obsBadgeTimer);
+                obsBadgeTimer = null;
+            }
+        }
+
+        function applyObsModeStyles() {
+            const header = document.querySelector('header');
+            const main = document.querySelector('main');
+            const footer = document.querySelector('footer');
+            const overlay = document.getElementById('obsOverlayContainer');
+
+            if (header) header.classList.add('hidden');
+            if (main) main.classList.add('hidden');
+            if (footer) footer.classList.add('hidden');
+
+            if (obsConfig.transparent) {
+                document.body.style.backgroundColor = 'transparent';
+            } else {
+                document.body.style.backgroundColor = '#0f172a';
+            }
+
+            if (overlay) {
+                overlay.classList.remove('hidden');
+                overlay.classList.add('flex');
+            }
+
+            renderObsOverlay();
+        }
+
+        function renderObsOverlay() {
+            const container = document.getElementById('obsOverlayContent');
+            if (!container || !currentWarningData) return;
+
+            if (obsBadgeTimer) {
+                clearInterval(obsBadgeTimer);
+                obsBadgeTimer = null;
+            }
+
+            const activeMunis = currentWarningData.municipalities.filter(m => m.maxSeverity !== 'clear');
+            const prefName = currentWarningData.prefInfo ? currentWarningData.prefInfo.name : '対象地域';
+
+            if (obsConfig.autohide && activeMunis.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let posAlignment = 'justify-end items-stretch';
+
+            if (obsConfig.layout === 'ticker') {
+                if (obsConfig.position === 'top') {
+                    posAlignment = 'justify-start items-stretch';
+                } else if (obsConfig.position === 'center') {
+                    posAlignment = 'justify-center items-stretch';
+                } else {
+                    posAlignment = 'justify-end items-stretch';
+                }
+            } else if (obsConfig.layout === 'card' || obsConfig.layout === 'badge') {
+                if (obsConfig.position === 'top-left') {
+                    posAlignment = 'justify-start items-start';
+                } else if (obsConfig.position === 'top-right') {
+                    posAlignment = 'justify-start items-end';
+                } else if (obsConfig.position === 'bottom-left') {
+                    posAlignment = 'justify-end items-start';
+                } else if (obsConfig.position === 'bottom-right') {
+                    posAlignment = 'justify-end items-end';
+                }
+            }
+            container.className = `pointer-events-auto w-full h-full flex flex-col ${posAlignment}`;
+
+            // --- Layout 1: Ticker ---
+            if (obsConfig.layout === 'ticker') {
+                let itemsHtml = '';
+                if (activeMunis.length === 0) {
+                    itemsHtml = `<span class="inline-flex items-center gap-2 text-emerald-400 font-bold">${prefName}: 現在、警報・注意報は発表されていません</span>`;
+                } else {
+                    activeMunis.forEach(m => {
+                        const wNames = m.warnings.map(w => w.name).join('・');
+                        let badgeClass = 'bg-yellow-500 text-slate-950';
+                        if (m.maxSeverity === 'emergency') badgeClass = 'bg-purple-600 text-white animate-pulse';
+                        else if (m.maxSeverity === 'warning') badgeClass = 'bg-red-600 text-white';
+
+                        itemsHtml += `<span class="inline-flex items-center gap-2 mx-4"><span class="px-2 py-0.5 rounded text-xs font-bold ${badgeClass}">${m.name}</span> <span class="text-white font-medium">${wNames}</span></span>`;
+                    });
+                }
+
+                const tickerContent = activeMunis.length > 0 
+                    ? `<div id="obsTickerTrack" class="animate-marquee flex items-center shrink-0"><div>${itemsHtml}</div><div>${itemsHtml}</div></div>`
+                    : `<div class="flex items-center">${itemsHtml}</div>`;
+
+                let borderClass = 'border-t';
+                if (obsConfig.position === 'top') borderClass = 'border-b';
+                else if (obsConfig.position === 'center') borderClass = 'border-y';
+
+                container.innerHTML = `
+                    <div class="w-full glass-panel ${borderClass} border-amber-500/40 p-3 shadow-2xl backdrop-blur-md text-sm flex items-center overflow-hidden">
+                        <div class="shrink-0 bg-amber-500 text-slate-950 font-black px-3 py-1 rounded-lg text-xs mr-3 flex items-center z-10 shadow-md">
+                            <span>気象情報</span>
+                        </div>
+                        <div class="relative w-full overflow-hidden flex items-center">
+                            ${tickerContent}
+                        </div>
+                    </div>
+                `;
+
+                if (activeMunis.length > 0) {
+                    requestAnimationFrame(() => {
+                        const track = document.getElementById('obsTickerTrack');
+                        if (track && track.firstElementChild) {
+                            const contentWidth = track.firstElementChild.scrollWidth;
+                            const speedPxPerSec = 70;
+                            const duration = Math.max(5, contentWidth / speedPxPerSec);
+                            track.style.animationDuration = `${duration}s`;
+                        }
+                    });
+                }
+            } 
+            // --- Layout 2: Card ---
+            else if (obsConfig.layout === 'card') {
+                const pageSize = 10;
+                const totalPages = Math.max(1, Math.ceil(activeMunis.length / pageSize));
+                
+                if (obsCardPageIndex >= totalPages) obsCardPageIndex = 0;
+
+                const renderCardPage = (pageIdx) => {
+                    let cardListHtml = '';
+                    if (activeMunis.length === 0) {
+                        cardListHtml = `<p class="text-xs text-emerald-400 py-1">警報・注意報なし</p>`;
+                    } else {
+                        const start = pageIdx * pageSize;
+                        const pageMunis = activeMunis.slice(start, start + pageSize);
+
+                        pageMunis.forEach(m => {
+                            const wNames = m.warnings.map(w => w.name).join(' ');
+                            let badgeClass = 'text-yellow-400';
+                            if (m.maxSeverity === 'emergency') badgeClass = 'text-purple-400 font-bold';
+                            else if (m.maxSeverity === 'warning') badgeClass = 'text-red-400 font-bold';
+
+                            cardListHtml += `
+                                <div class="flex items-start justify-between text-xs py-1 border-b border-slate-800/80 last:border-0">
+                                    <span class="font-bold text-slate-200 shrink-0 mr-2">${m.name}</span>
+                                    <span class="${badgeClass} text-right font-medium">${wNames}</span>
+                                </div>
+                            `;
+                        });
+                    }
+
+                    const pageIndicator = totalPages > 1 
+                        ? `<span class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-amber-400 border border-slate-700 font-bold">${pageIdx + 1} / ${totalPages}</span>`
+                        : `<span class="text-[10px] text-slate-400">${currentWarningData.reportTime || ''}</span>`;
+
+                    container.innerHTML = `
+                        <div id="obsCardWrapper" class="max-w-xs w-full glass-panel border border-slate-700/80 rounded-2xl p-4 shadow-2xl backdrop-blur-md space-y-2 transition-all duration-300 opacity-100">
+                            <div class="flex items-center justify-between border-b border-slate-700 pb-2">
+                                <span class="font-black text-sm text-amber-400">
+                                    ${prefName}
+                                </span>
+                                ${pageIndicator}
+                            </div>
+                            <div class="space-y-1 overflow-hidden">
+                                ${cardListHtml}
+                            </div>
+                        </div>
+                    `;
+                };
+
+                renderCardPage(obsCardPageIndex);
+
+                if (totalPages > 1) {
+                    obsBadgeTimer = setInterval(() => {
+                        const wrapper = document.getElementById('obsCardWrapper');
+                        if (wrapper) {
+                            wrapper.classList.add('opacity-0');
+                            setTimeout(() => {
+                                obsCardPageIndex = (obsCardPageIndex + 1) % totalPages;
+                                renderCardPage(obsCardPageIndex);
+                            }, 300);
+                        } else {
+                            obsCardPageIndex = (obsCardPageIndex + 1) % totalPages;
+                            renderCardPage(obsCardPageIndex);
+                        }
+                    }, 5000);
+                }
+            } 
+            // --- Layout 3: Mini-Badge ---
+            else if (obsConfig.layout === 'badge') {
+                const flatList = [];
+                activeMunis.forEach(m => {
+                    m.warnings.forEach(w => {
+                        flatList.push({
+                            muniName: m.name,
+                            warningName: w.name,
+                            level: w.level,
+                            maxSeverity: m.maxSeverity
+                        });
+                    });
+                });
+
+                const renderSingleBadge = (idx) => {
+                    if (flatList.length === 0) {
+                        container.innerHTML = `
+                            <div class="glass-panel border border-emerald-500/50 rounded-xl px-3.5 py-2 shadow-2xl backdrop-blur-md text-emerald-400 font-bold text-xs flex items-center gap-2">
+                                <span>[${prefName}] 警報・注意報なし</span>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    if (idx >= flatList.length) idx = 0;
+                    const item = flatList[idx];
+
+                    let badgeStyle = 'bg-yellow-500 text-slate-950 font-bold';
+                    let borderStyle = 'border-yellow-400/80';
+                    if (item.level === 'emergency') {
+                        badgeStyle = 'bg-purple-600 text-white font-extrabold animate-pulse';
+                        borderStyle = 'border-purple-300';
+                    } else if (item.level === 'warning') {
+                        badgeStyle = 'bg-red-600 text-white font-bold';
+                        borderStyle = 'border-red-400';
+                    }
+
+                    const counterText = flatList.length > 1 ? `<span class="ml-1 opacity-40 text-[8px] text-slate-400 font-mono tracking-tighter">(${idx + 1}/${flatList.length})</span>` : '';
+
+                    container.innerHTML = `
+                        <div id="obsBadgeElement" class="glass-panel border ${borderStyle} rounded-xl px-3.5 py-2 shadow-2xl backdrop-blur-md transition-all duration-300 opacity-100 flex items-center gap-2 text-xs">
+                            <span class="px-2 py-0.5 rounded text-[11px] ${badgeStyle}">${item.muniName}</span>
+                            <span class="text-white font-semibold">${item.warningName}</span>
+                            ${counterText}
+                        </div>
+                    `;
+                };
+
+                renderSingleBadge(obsBadgeIndex);
+
+                if (flatList.length > 1) {
+                    obsBadgeTimer = setInterval(() => {
+                        const badgeEl = document.getElementById('obsBadgeElement');
+                        if (badgeEl) {
+                            badgeEl.classList.add('opacity-0');
+                            setTimeout(() => {
+                                obsBadgeIndex = (obsBadgeIndex + 1) % flatList.length;
+                                renderSingleBadge(obsBadgeIndex);
+                            }, 300);
+                        } else {
+                            obsBadgeIndex = (obsBadgeIndex + 1) % flatList.length;
+                            renderSingleBadge(obsBadgeIndex);
+                        }
+                    }, 3500);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
